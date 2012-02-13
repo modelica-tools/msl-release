@@ -33,13 +33,15 @@ echo(true);
 
 setDebugFlags("nogen");
 
-/* The library path needs to be defined as env variable.
- * E.g., export MODELICALIBRARIES="/path/to/library/root/dir"
+/* Some variables need to be provided as env variabels,e.g.,:
+ *  $ export MODELICALIBRARIES="/path/to/library/root/dir"
+ *  $ export releaseVersion="3.2"
  */
 rootDir := getEnvironmentVar("MODELICAPATH");
+relVer  := getEnvironmentVar("releaseVersion");
 setModelicaPath(rootDir);
 loadFile(rootDir+"/ModelicaServices-Variants/Default/ModelicaServices/package.mo");
-loadModel(Modelica);
+loadModel(Modelica,{relVer});
 loadModel(ModelicaReference);
 loadModel(ObsoleteModelica3);
 // loadModel(ModelicaTest);
@@ -56,7 +58,7 @@ MSLdir := dirname(getSourceFile(Modelica));
 // Define where the HTML files should go:
 targetDir := MSLdir+"/Resources/help/";
 // Create the target directory:
-system("mkdir -p " + targetDir);
+system("mkdir -p \""+targetDir+"\"");
 // Definethe relative path to the root directory
 relativeRootDir := "../../../";
 
@@ -249,7 +251,7 @@ import glob
 import sys
 
 repls = ["+replaceCommands+"
- (re.compile(r'.*/omlibrary/'), ''),
+ (re.compile(r'/Modelica/'), r'/Modelica "+relVer+"/'),
  (re.compile(r'[Mm][Oo][Dd][Ee][Ll][Ii][Cc][Aa]://([A-Za-z0-9.\\'()_]*#)'), r'\\1.html#'),
  (re.compile(r'[Mm][Oo][Dd][Ee][Ll][Ii][Cc][Aa]://([A-Za-z0-9.\\'()_]*)'), r'\\1.html'),
 ]
@@ -281,14 +283,15 @@ for filepath in sorted(glob.glob('"+targetDir+"*.html')):
 ");
 
 writeFile("FindFiles.sh","#!/bin/bash
-OMLIBRARY="+targetDir+"
+OMLIBRARY=\""+targetDir+"\"
 rm -f *.png *.pdf FindFiles.log
-cd $OMLIBRARY
+cd \"$OMLIBRARY\"
 grep -v http:// *.html | grep -v [Mm][Oo][Dd][Ee][Ll][Ii][Cc][Aa]:// | egrep -o \"[A-Za-z_0-9%.: -]*/[A-Za-z_0-9%.:/ -]*\\.(png|jpg|pdf)\" | cut -d: -f2- | sort -u | tr -d \\\" | sed 's/ /%20/g' > tmp
 for f in `cat tmp`; do
   f=`echo $f | sed 's/%20/ /'`
   if test -f \"$OMLIBRARY/$f\"; then
-     `echo $f`
+## This one will be needed/adjusted for standalone documentation
+    `echo $f`
 #    d=`dirname \"$f\"`
 #   mkdir -p \"$d\"
 #    cp \"$OMLIBRARY/$f\" \"$f\"
@@ -296,6 +299,7 @@ for f in `cat tmp`; do
     echo Not found: $f | tee -a FindFiles.log
   fi
 done
+rm -f tmp
 ");
 
 writeFile(stringAdd(targetDir,"style.css"),"
@@ -334,9 +338,9 @@ system("mkdir -p old-html-tmp");
 "...done";
 
 "Copying original HTML files to 'old-html-tmp'";
-system("cp " + targetDir +"*.html old-html-tmp/");
+system("cp \""+targetDir+"\"*.html old-html-tmp/");
 "Copying genration script to the help directory";
-system("cp genDocOMC.mos " + targetDir);
+system("cp genDocOMC.mos \""+targetDir+"\"");
 
 "Tidy.py";
 system("python Tidy.py 2> tidy.err");
