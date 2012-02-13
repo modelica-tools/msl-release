@@ -43,16 +43,12 @@ echo(true);
 
 setDebugFlags("nogen");
 
-loadString("
-function stringAdd
-  input String a,b;
-  output String c := a+b;
-end stringAdd;
-");
-
-rootDir:="/home/dietmarw/.workspace/Modelica.git";
+/* The library path needs to be defined as env variable.
+ * E.g., export MODELICALIBRARIES="/path/to/library/root/dir"
+ */
+rootDir := getEnvironmentVar("MODELICAPATH");
 setModelicaPath(rootDir);
-loadFile(stringAdd(rootDir,"/ModelicaServices-Variants/Default/ModelicaServices/package.mo"));
+loadFile(rootDir+"/ModelicaServices-Variants/Default/ModelicaServices/package.mo");
 loadModel(Modelica);
 loadModel(ModelicaReference);
 loadModel(ObsoleteModelica3);
@@ -65,26 +61,28 @@ getErrorString();
 
 // should we generate OM built-in functions?
 genBuiltin := false;
-// Defining and creating the output directory for html files
+// Defining and creating the output directory for html files:
 MSLdir := dirname(getSourceFile(Modelica));
-targetDir := MSLdir+"/Resources/help/";  // this is where the HTML files should go
-relativeLibDir := "../../../"; // relative path to the directory of all libraries
+// Define where the HTML files should go:
+targetDir := MSLdir+"/Resources/help/";
+// Create the target directory:
 system("mkdir -p " + targetDir);
-getErrorString();
+// Definethe relative path to the root directory
+relativeRootDir := "../../../";
 
-//a:=0;
+getErrorString();
 
 echo(false);
 allClassNames:=getClassNames(builtin=genBuiltin,recursive=true,sort=true);
-echo(true);
-
 system("date -u +%FT%TZ > tmp");
 genTimeStamp := readFile("tmp");
 version := "<hr />Generated at " + genTimeStamp +  " by <a href=\"http://openmodelica.org\">OpenModelica</a>" + getVersion() + " using <a href=\"GenerateDoc.mos\">GenerateDoc.mos</a>";
 
+echo(true);
 "classNames";
 classNames := getClassNames(builtin=genBuiltin,sort=true);
 
+"Defining functions used in this script...";
 loadString("
 function filename
   input String str;
@@ -165,6 +163,10 @@ record Item
   String short;
 end Item;
 
+function stringAdd
+  input String a,b;
+  output String c := a+b;
+end stringAdd;
 ");
 
 "Start calculate items";
@@ -187,10 +189,14 @@ items:={Item(
     ) for c in allClassNames};
 echo(true);
 "Start writing items to file";
+echo(false);
 writeFile(stringAdd(targetDir,itemFile(items)) /* Vector of filenames */,itemString(items,version) /* Vector of file contents */);
 stringAdd(targetDir,itemFile(items));
 getErrorString();
+
+echo(true);
 "Finished writing " + String(size(items,1)) + " items";
+echo(false);
 
 dirs := "";
 replaceCommands := "";
@@ -209,7 +215,7 @@ for cl in classNames loop
     if base == "package.mo" then
       /* The replaceCommands are used in the Python-script generated later. These are sed-style replacements with & as delimiter to avoid escaping slashes. */
       // replaceCommands := replaceCommands + "\n (re.compile('^[Mm][Oo][Dd][Ee][Ll][Ii][Cc][Aa]://"+contentStrToks[end]+"/'),'"+dirname(file)+"/'),";
-      replaceCommands := replaceCommands + "\n (re.compile(r'^[Mm][Oo][Dd][Ee][Ll][Ii][Cc][Aa]://"+contentStrToks[end]+"/'),'"+relativeLibDir+contentStrToks[end]+"/'),";
+      replaceCommands := replaceCommands + "\n (re.compile(r'^[Mm][Oo][Dd][Ee][Ll][Ii][Cc][Aa]://"+contentStrToks[end]+"/'),'"+relativeRootDir+contentStrToks[end]+"/'),";
       dirpaths := strtok(dirname(file),"/");
       dirs := dirs + " \"" + dirpaths[end] + "\" ";
     end if;
@@ -330,12 +336,18 @@ writeFile("FilterTidy.sh","#!/bin/bash
 grep -v DOCTYPE tidy.err | grep -v \"<body>\" |grep -v \"<html>\\|</html>\" |grep -v lacks |grep -v apos | grep -B1 Warning > tidy.filtered
 ");
 
+echo(true);
+"Removing previous generation output files...";
 system("rm -f tidy.out tidy.err tidy.filtered");
 system("mkdir -p old-html-tmp");
+"...done";
+
+"Copying original HTML files to 'old-html-tmp'";
 system("cp " + targetDir +"*.html old-html-tmp/");
-getErrorString();
+
 "Tidy.py";
 system("python Tidy.py 2> tidy.err");
+
 "FilterTidy.sh";
 system("bash FilterTidy.sh");
 //"FindFiles.sh";
