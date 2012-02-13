@@ -47,7 +47,7 @@ setModelicaPath("/home/dietmarw/.workspace/Modelica.git");
 loadFile("/home/dietmarw/.workspace/Modelica.git/ModelicaServices-Variants/Default/ModelicaServices/package.mo");
 loadModel(Modelica);
 loadModel(ModelicaReference);
-// loadModel(ObsoleteModelica3);
+loadModel(ObsoleteModelica3);
 // loadModel(ModelicaTest);
 // loadModel(Modelica_LinearSystems2);
 // loadModel(BioChem);
@@ -62,8 +62,6 @@ rootDir := dirname(getSourceFile(Modelica));
 targetDir := rootDir+"/Resources/help/";
 relativeTargetDir := "../..";
 system("mkdir -p " + targetDir);
-
-
 getErrorString();
 
 a:=0;
@@ -174,12 +172,12 @@ items:={Item(
       preSuffixIfNotEmpty(
         "<h2>Contents</h2>\n<table><tr><th>Name</th><th>Description</th></tr>",
         sum("<tr><td><a href=\"" + filename(OpenModelica.Scripting.typeNameString(cl)) + ".html\">" +
-                    last(OpenModelica.Scripting.typeNameStrings(cl)) + "</a></td>" +
-                    "<td>" + OpenModelica.Scripting.getClassComment(cl) + "</td></tr>\n"
-                for cl in OpenModelica.Scripting.getClassNames(c,qualified=true,sort=true)),
+             last(OpenModelica.Scripting.typeNameStrings(cl)) + "</a></td>" + "<td>" +
+             OpenModelica.Scripting.stringReplace(OpenModelica.Scripting.getClassComment(cl),"&","&amp;") + "</td></tr>\n"
+             for cl in OpenModelica.Scripting.getClassNames(c,qualified=true,sort=true)),
         "</table>"
         ),
-      OpenModelica.Scripting.getClassComment(c),
+      OpenModelica.Scripting.stringReplace(OpenModelica.Scripting.getClassComment(c),"&","&amp;"),
       preSuffixIfNotEmpty("\n<h4><a name=\"text\">Interface</a></h4>\n<blockquote><pre>",OpenModelica.Scripting.list(c,interfaceOnly=true),"</pre></blockquote>"),
       preSuffixIfNotEmpty("\n<h4><a name=\"text\">Definition</a></h4>\n<blockquote><pre>",OpenModelica.Scripting.list(c,shortOnly=true),"</pre></blockquote>")
     ) for c in allClassNames};
@@ -211,7 +209,7 @@ for cl in classNames loop
       dirpaths := strtok(dirname(file),"/");
       dirs := dirs + " \"" + dirpaths[end] + "\" ";
     end if;
-    comment := getClassComment(cl);
+    comment := OpenModelica.Scripting.stringReplace(getClassComment(cl),"&","&amp;"); // lets escape "&" on the fly
     contentStr := typeNameString(cl);
     fileName := filename(contentStr);
     writeFile(filetmp, "<tr><td><a href=\"" + fileName + ".html\">" + contentStrToks[end] + "</a></td><td>" + comment + "</td><td>" + modelVersion + "</td></tr>", append = true);
@@ -231,7 +229,7 @@ if genBuiltin then
       contentStr := typeNameString(cl);
       contentStrToks := typeNameStrings(cl);
       modelVersion := getVersion(cl);
-      comment := getClassComment(cl);
+      comment := OpenModelica.Scripting.stringReplace(getClassComment(cl),"&","&amp;"); // lets escape "&" on the fly
       fileName := filename(contentStr);
       writeFile(filetmp, "<tr><td><a href=\"" + fileName + ".html\">" + contentStrToks[end] + "</a></td><td>" + comment + "</td><td>" + modelVersion + "</td></tr>", append = true);
     end if;
@@ -336,12 +334,12 @@ getErrorString();
 system("python Tidy.py 2> tidy.err");
 "FilterTidy.sh";
 system("bash FilterTidy.sh");
-"FindFiles.sh";
-system("bash FindFiles.sh");
-system("rm -f ModelicaDocumentation.tar.xz");
-system("mkdir -p " + dirs);
-"tar";
-dirs;
-cmd := "tar cJf ModelicaDocumentation.tar.xz --dereference style.css *.html " + dirs + " GenerateDoc.mos FindFiles.log tidy.log";
+//"FindFiles.sh";
+//system("bash FindFiles.sh");
+//system("rm -f ModelicaDocumentation.tar.xz");
+//system("mkdir -p " + dirs);
+//"tar";
+//dirs;
+//cmd := "tar cJf ModelicaDocumentation.tar.xz --dereference style.css *.html " + dirs + " GenerateDoc.mos FindFiles.log tidy.log";
 //system(cmd);
 getErrorString();
