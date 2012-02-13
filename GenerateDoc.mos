@@ -260,7 +260,7 @@ def linkreplace(link):
     link = regex.sub(repl,link)
   return link
 
-for filepath in glob.glob('"+targetDir+"*.html'):
+for filepath in sorted(glob.glob('"+targetDir+"*.html')):
   tag = '[Checking file %s]:\\n' % filepath
 #  sys.stdout.write(tag)  # not much point in writing the tags to stdout
   sys.stderr.write(tag)
@@ -325,7 +325,7 @@ pre
 ");
 
 writeFile("FilterTidy.sh","#!/bin/bash
-grep -v DOCTYPE tidy.err | grep -v \"<body>\" |grep -v \"<html>\\|</html>\" |grep -v lacks | grep -B1 Warning > tidy.filtered
+grep -v DOCTYPE tidy.err | grep -v \"<body>\" |grep -v \"<html>\\|</html>\" |grep -v lacks |grep -v apos | grep -B1 Warning > tidy.filtered
 ");
 
 system("rm -f tidy.out tidy.err tidy.filtered");
