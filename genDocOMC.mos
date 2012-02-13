@@ -76,7 +76,7 @@ echo(false);
 allClassNames:=getClassNames(builtin=genBuiltin,recursive=true,sort=true);
 system("date -u +%FT%TZ > tmp");
 genTimeStamp := readFile("tmp");
-version := "<hr />Generated at " + genTimeStamp +  " by <a href=\"http://openmodelica.org\">OpenModelica</a>" + getVersion() + " using <a href=\"GenerateDoc.mos\">GenerateDoc.mos</a>";
+version := "<hr />Generated at " + genTimeStamp +  " by <a href=\"http://openmodelica.org\">OpenModelica</a>" + getVersion() + " using <a href=\"genDocOMC.mos\">genDocOMC.mos</a>";
 
 echo(true);
 "classNames";
@@ -246,7 +246,8 @@ if genBuiltin then
   end for;
   writeFile(filetmp, "</table>\n", append = true);
 end if;
-writeFile(filetmp, version + " (<a href=\"ModelicaDocumentation.tar.xz\">Offline version</a>)", append = true);
+//writeFile(filetmp, version + " (<a href=\"ModelicaDocumentation.tar.xz\">Offline version</a>)", append = true);
+writeFile(filetmp, version, append = true);
 writeFile(filetmp, "</body>\n</html>", append = true);
 
 writeFile("Tidy.py","#!/usr/bin/env python
@@ -298,7 +299,7 @@ for f in `cat tmp`; do
   f=`echo $f | sed 's/%20/ /'`
   if test -f \"$OMLIBRARY/$f\"; then
      `echo $f`
-    d=`dirname \"$f\"`
+#    d=`dirname \"$f\"`
 #   mkdir -p \"$d\"
 #    cp \"$OMLIBRARY/$f\" \"$f\"
   else
@@ -344,18 +345,20 @@ system("mkdir -p old-html-tmp");
 
 "Copying original HTML files to 'old-html-tmp'";
 system("cp " + targetDir +"*.html old-html-tmp/");
+"Copying genration script to the help directory";
+system("cp genDocOMC.mos " + targetDir);
 
 "Tidy.py";
 system("python Tidy.py 2> tidy.err");
 
 "FilterTidy.sh";
 system("bash FilterTidy.sh");
-//"FindFiles.sh";
-//system("bash FindFiles.sh");
+"FindFiles.sh";
+system("bash FindFiles.sh");
 //system("rm -f ModelicaDocumentation.tar.xz");
 //system("mkdir -p " + dirs);
 //"tar";
 //dirs;
-//cmd := "tar cJf ModelicaDocumentation.tar.xz --dereference style.css *.html " + dirs + " GenerateDoc.mos FindFiles.log tidy.log";
+//cmd := "tar cJf ModelicaDocumentation.tar.xz --dereference style.css *.html " + dirs + " genDocOMC.mos FindFiles.log tidy.log";
 //system(cmd);
 getErrorString();

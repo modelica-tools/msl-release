@@ -7,9 +7,9 @@ export MODELICAPATH="/tmp/MSLrelease/$releaseDir"
 # Clean up of previous script runs
 rm -rf "/tmp/MSLrelease"
 mkdir -p "$MODELICAPATH"
-## Export out a given release from the svn server
+## Export out a given release from the svn server (use this for keyword expansion)
 #svn export "https://svn.modelica.org/projects/Modelica/tags/$tag" "."
-## Export using git
+## Export using git (for testing)
 git archive --remote=$MODELICALIBRARIES $tag | tar -x -C "$MODELICAPATH"
 ## Call Dymola to generate the HTML documentation
 ## CURRENTLY NOT WORKING
