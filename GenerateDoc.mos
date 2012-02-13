@@ -43,8 +43,16 @@ echo(true);
 
 setDebugFlags("nogen");
 
-setModelicaPath("/home/dietmarw/.workspace/Modelica.git");
-loadFile("/home/dietmarw/.workspace/Modelica.git/ModelicaServices-Variants/Default/ModelicaServices/package.mo");
+loadString("
+function stringAdd
+  input String a,b;
+  output String c := a+b;
+end stringAdd;
+");
+
+rootDir:="/home/dietmarw/.workspace/Modelica.git";
+setModelicaPath(rootDir);
+loadFile(stringAdd(rootDir,"/ModelicaServices-Variants/Default/ModelicaServices/package.mo"));
 loadModel(Modelica);
 loadModel(ModelicaReference);
 loadModel(ObsoleteModelica3);
@@ -58,13 +66,13 @@ getErrorString();
 // should we generate OM built-in functions?
 genBuiltin := false;
 // Defining and creating the output directory for html files
-rootDir := dirname(getSourceFile(Modelica));
-targetDir := rootDir+"/Resources/help/";
-relativeTargetDir := "../..";
+MSLdir := dirname(getSourceFile(Modelica));
+targetDir := MSLdir+"/Resources/help/";  // this is where the HTML files should go
+relativeLibDir := "../../../"; // relative path to the directory of all libraries
 system("mkdir -p " + targetDir);
 getErrorString();
 
-a:=0;
+//a:=0;
 
 echo(false);
 allClassNames:=getClassNames(builtin=genBuiltin,recursive=true,sort=true);
@@ -157,10 +165,6 @@ record Item
   String short;
 end Item;
 
-function stringAdd
-  input String a,b;
-  output String c := a+b;
-end stringAdd;
 ");
 
 "Start calculate items";
@@ -205,7 +209,7 @@ for cl in classNames loop
     if base == "package.mo" then
       /* The replaceCommands are used in the Python-script generated later. These are sed-style replacements with & as delimiter to avoid escaping slashes. */
       // replaceCommands := replaceCommands + "\n (re.compile('^[Mm][Oo][Dd][Ee][Ll][Ii][Cc][Aa]://"+contentStrToks[end]+"/'),'"+dirname(file)+"/'),";
-      replaceCommands := replaceCommands + "\n (re.compile(r'^[Mm][Oo][Dd][Ee][Ll][Ii][Cc][Aa]://"+contentStrToks[end]+"/'),'"+relativeTargetDir+"/'),";
+      replaceCommands := replaceCommands + "\n (re.compile(r'^[Mm][Oo][Dd][Ee][Ll][Ii][Cc][Aa]://"+contentStrToks[end]+"/'),'"+relativeLibDir+contentStrToks[end]+"/'),";
       dirpaths := strtok(dirname(file),"/");
       dirs := dirs + " \"" + dirpaths[end] + "\" ";
     end if;
