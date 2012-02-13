@@ -1,0 +1,347 @@
+/*
+ * This file is part of OpenModelica.
+ *
+ * Copyright (c) 1998-CurrentYear, Linköping University,
+ * Department of Computer and Information Science,
+ * SE-58183 Linköping, Sweden.
+ *
+ * All rights reserved.
+ *
+ * THIS PROGRAM IS PROVIDED UNDER THE TERMS OF GPL VERSION 3
+ * AND THIS OSMC PUBLIC LICENSE (OSMC-PL).
+ * ANY USE, REPRODUCTION OR DISTRIBUTION OF THIS PROGRAM CONSTITUTES RECIPIENT'S
+ * ACCEPTANCE OF THE OSMC PUBLIC LICENSE.
+ *
+ * The OpenModelica software and the Open Source Modelica
+ * Consortium (OSMC) Public License (OSMC-PL) are obtained
+ * from Linköping University, either from the above address,
+ * from the URLs: http://www.ida.liu.se/projects/OpenModelica or
+ * http://www.openmodelica.org, and in the OpenModelica distribution.
+ * GNU version 3 is obtained from: http://www.gnu.org/copyleft/gpl.html.
+ *
+ * This program is distributed WITHOUT ANY WARRANTY; without
+ * even the implied warranty of  MERCHANTABILITY or FITNESS
+ * FOR A PARTICULAR PURPOSE, EXCEPT AS EXPRESSLY SET FORTH
+ * IN THE BY RECIPIENT SELECTED SUBSIDIARY LICENSE CONDITIONS
+ * OF OSMC-PL.
+ *
+ * See the full OSMC Public License conditions for more details.
+ *
+ */
+
+/*
+ * Generates Modelica documentation automatically in about 8 minutes on Linux, 30 on Windows
+ *   Includes Modelica standard libraries
+ *   Most Modelica builtin operators
+ *   Some non-Modelica-but-used-in-MSL operators
+ *   OpenModelica scripting
+ *
+ * $Id$
+ */
+
+echo(true);
+
+setDebugFlags("nogen");
+
+setModelicaPath("/home/dietmarw/.workspace/Modelica.git");
+loadFile("/home/dietmarw/.workspace/Modelica.git/ModelicaServices-Variants/Default/ModelicaServices/package.mo");
+loadModel(Modelica);
+loadModel(ModelicaReference);
+// loadModel(ObsoleteModelica3);
+// loadModel(ModelicaTest);
+// loadModel(Modelica_LinearSystems2);
+// loadModel(BioChem);
+getErrorString();
+
+/* Customisation */
+
+// should we generate OM built-in functions?
+genBuiltin := false;
+// Defining and creating the output directory for html files
+rootDir := dirname(getSourceFile(Modelica));
+targetDir := rootDir+"/Resources/help/";
+relativeTargetDir := "../..";
+system("mkdir -p " + targetDir);
+
+
+getErrorString();
+
+a:=0;
+
+echo(false);
+allClassNames:=getClassNames(builtin=genBuiltin,recursive=true,sort=true);
+echo(true);
+
+system("date -u +%FT%TZ > tmp");
+genTimeStamp := readFile("tmp");
+version := "<hr />Generated at " + genTimeStamp +  " by <a href=\"http://openmodelica.org\">OpenModelica</a>" + getVersion() + " using <a href=\"GenerateDoc.mos\">GenerateDoc.mos</a>";
+
+"classNames";
+classNames := getClassNames(builtin=genBuiltin,sort=true);
+
+loadString("
+function filename
+  input String str;
+  output String ostr :=
+    // OpenModelica.Scripting.stringReplace(
+    //   OpenModelica.Scripting.stringReplace(
+        OpenModelica.Scripting.stringReplace(
+          OpenModelica.Scripting.stringReplace(
+            OpenModelica.Scripting.stringReplace(str,\"'\",\"\"),
+            \"/\",\"Division\"),
+          \"*\",\"Multiplication\")
+    //  \"(\",\"\"),
+    //\")\",\"\")
+;
+end filename;
+
+function notLast
+  input String str[:];
+  output String ostr[:] := str[1:end];
+end notLast;
+
+function last
+  input String str[:];
+  output String ostr := str[end];
+end last;
+
+function preSuffixIfNotEmpty
+  input String prefix;
+  input String str;
+  input String suffix;
+  output String out := if str <> \"\" then prefix + str + suffix else \"\";
+end preSuffixIfNotEmpty;
+
+function head
+  input String strs[:];
+  output String head;
+protected
+  String compound := \"\", file;
+algorithm
+  head :=
+\"  <link href=\\\"style.css\\\" rel=\\\"stylesheet\\\" type=\\\"text/css\\\" />
+  <title>\"+sum(s + \".\" for s in strs[1:end-1])+strs[end]+\"</title>
+  <h1><a href = \\\"index.html\\\">.</a>\";
+  for ident in strs[1:end-1] loop
+    compound := if compound == \"\" then ident else compound+\".\"+ident;
+    file := compound+\".html\";
+    head := head + \"<a href = \\\"\"+file+\"\\\">\"+ident+\"</a>.\";
+  end for;
+  head := head + strs[end] + \"</h1>\";
+end head;
+
+function itemString
+  input Item item;
+  input String version;
+  output String res;
+protected
+  String docInfo, revision;
+algorithm
+  docInfo := if item.docInfo[1] == \"\" or (not OpenModelica.Scripting.regexBool(docInfo,\"^.*<[Hh][Tt][Mm][Ll]>.*$\"))
+    then preSuffixIfNotEmpty(\"<h2><a name=\\\"info\\\">Information</a></h2><pre>\", item.comment, \"</pre>\")
+    else \"<h2><a name=\\\"info\\\">Information</a></h2>\" + item.docInfo[1];
+  revision := if item.docInfo[2] <> \"\" then \"<h2><a name=\\\"revisions\\\">Revisions</a></h2>\" + item.docInfo[2] else \"\";
+  res := item.head + docInfo + item.interface + item.short + item.contents + revision + version;
+end itemString;
+
+function itemFile
+  input Item item;
+  output String file := item.file;
+end itemFile;
+
+record Item
+  String file;
+  String head;
+  String docInfo[2];
+  String contents;
+  String comment;
+  String interface;
+  String short;
+end Item;
+
+function stringAdd
+  input String a,b;
+  output String c := a+b;
+end stringAdd;
+");
+
+"Start calculate items";
+echo(false);
+items:={Item(
+      filename(OpenModelica.Scripting.typeNameString(c))+".html",
+      head(OpenModelica.Scripting.typeNameStrings(c)),
+      OpenModelica.Scripting.getDocumentationAnnotation(c),
+      preSuffixIfNotEmpty(
+        "<h2>Contents</h2>\n<table><tr><th>Name</th><th>Description</th></tr>",
+        sum("<tr><td><a href=\"" + filename(OpenModelica.Scripting.typeNameString(cl)) + ".html\">" +
+                    last(OpenModelica.Scripting.typeNameStrings(cl)) + "</a></td>" +
+                    "<td>" + OpenModelica.Scripting.getClassComment(cl) + "</td></tr>\n"
+                for cl in OpenModelica.Scripting.getClassNames(c,qualified=true,sort=true)),
+        "</table>"
+        ),
+      OpenModelica.Scripting.getClassComment(c),
+      preSuffixIfNotEmpty("\n<h4><a name=\"text\">Interface</a></h4>\n<blockquote><pre>",OpenModelica.Scripting.list(c,interfaceOnly=true),"</pre></blockquote>"),
+      preSuffixIfNotEmpty("\n<h4><a name=\"text\">Definition</a></h4>\n<blockquote><pre>",OpenModelica.Scripting.list(c,shortOnly=true),"</pre></blockquote>")
+    ) for c in allClassNames};
+echo(true);
+"Start writing items to file";
+writeFile(stringAdd(targetDir,itemFile(items)) /* Vector of filenames */,itemString(items,version) /* Vector of file contents */);
+stringAdd(targetDir,itemFile(items));
+getErrorString();
+"Finished writing " + String(size(items,1)) + " items";
+
+dirs := "";
+replaceCommands := "";
+filetmp := stringAdd(targetDir,"index.html");
+writeFile(filetmp, "<html><head><title>Modelica Documentation</title><link href=\"style.css\" rel=\"stylesheet\" type=\"text/css\" /></head><body><h1>Modelica Documentation</h1>\n");
+writeFile(filetmp, "<p>This is a listing of the available documentation of the Modelica Standard Library and its related libraries.</p>\n", append = true);
+writeFile(filetmp, "<h2>Libraries</h2>\n", append = true);
+writeFile(filetmp, "<table><tr><th>Name</th><th>Description</th><th>Version</th></tr>", append = true);
+for cl in classNames loop
+  file := getSourceFile(cl);
+  base := basename(file);
+  if base <> "ModelicaBuiltin.mo" then
+    base := basename(file);
+    contentStrToks := typeNameStrings(cl);
+    modelVersion := getVersion(cl);
+    if base == "package.mo" then
+      /* The replaceCommands are used in the Python-script generated later. These are sed-style replacements with & as delimiter to avoid escaping slashes. */
+      // replaceCommands := replaceCommands + "\n (re.compile('^[Mm][Oo][Dd][Ee][Ll][Ii][Cc][Aa]://"+contentStrToks[end]+"/'),'"+dirname(file)+"/'),";
+      replaceCommands := replaceCommands + "\n (re.compile(r'^[Mm][Oo][Dd][Ee][Ll][Ii][Cc][Aa]://"+contentStrToks[end]+"/'),'"+relativeTargetDir+"/'),";
+      dirpaths := strtok(dirname(file),"/");
+      dirs := dirs + " \"" + dirpaths[end] + "\" ";
+    end if;
+    comment := getClassComment(cl);
+    contentStr := typeNameString(cl);
+    fileName := filename(contentStr);
+    writeFile(filetmp, "<tr><td><a href=\"" + fileName + ".html\">" + contentStrToks[end] + "</a></td><td>" + comment + "</td><td>" + modelVersion + "</td></tr>", append = true);
+  end if;
+end for;
+writeFile(filetmp, "</table>\n", append = true);
+
+if genBuiltin then
+  writeFile(filetmp, "<h2>Builtin Environment</h2>\n", append = true);
+  writeFile(filetmp, "<p>This is a listing of builtin Modelica functions of OpenModelica and the documentation for OpenModelica-specific scripting.</p>\n", append = true);
+
+  writeFile(filetmp, "<table><tr><th>Name</th><th>Description</th><th>Version</th></tr>", append = true);
+  for cl in classNames loop
+    file := getSourceFile(cl);
+    base := basename(file);
+    if base == "ModelicaBuiltin.mo" then
+      contentStr := typeNameString(cl);
+      contentStrToks := typeNameStrings(cl);
+      modelVersion := getVersion(cl);
+      comment := getClassComment(cl);
+      fileName := filename(contentStr);
+      writeFile(filetmp, "<tr><td><a href=\"" + fileName + ".html\">" + contentStrToks[end] + "</a></td><td>" + comment + "</td><td>" + modelVersion + "</td></tr>", append = true);
+    end if;
+  end for;
+  writeFile(filetmp, "</table>\n", append = true);
+end if;
+writeFile(filetmp, version + " (<a href=\"ModelicaDocumentation.tar.xz\">Offline version</a>)", append = true);
+writeFile(filetmp, "</body>\n</html>", append = true);
+
+writeFile("Tidy.py","#!/usr/bin/env python
+from __future__ import with_statement
+from BeautifulSoup import BeautifulSoup
+import subprocess as sub
+import re
+import glob
+import sys
+
+repls = ["+replaceCommands+"
+ (re.compile(r'.*/omlibrary/'), ''),
+ (re.compile(r'[Mm][Oo][Dd][Ee][Ll][Ii][Cc][Aa]://([A-Za-z0-9.\\'()_]*#)'), r'\\1.html#'),
+ (re.compile(r'[Mm][Oo][Dd][Ee][Ll][Ii][Cc][Aa]://([A-Za-z0-9.\\'()_]*)'), r'\\1.html'),
+]
+
+def linkreplace(link):
+  for (regex,repl) in repls:
+    link = regex.sub(repl,link)
+  return link
+
+for filepath in glob.glob('"+targetDir+"*.html'):
+  tag = '[Checking file %s]:\\n' % filepath
+#  sys.stdout.write(tag)  # not much point in writing the tags to stdout
+  sys.stderr.write(tag)
+  pid = sub.call(['tidy', '-modify', '-quiet', filepath])
+  with open(filepath,'r') as html_file:
+    soup = BeautifulSoup(html_file)
+    for a in soup.findAll('a'):
+      try:
+        a['href'] = linkreplace(a['href'])
+      except:
+        pass
+      for img in soup.findAll('img'):
+        try:
+          img['src'] = linkreplace(img['src'])
+        except:
+          pass
+  with open(filepath,'w') as html_file:
+    html_file.write(soup.__str__())
+");
+
+writeFile("FindFiles.sh","#!/bin/bash
+OMLIBRARY="+targetDir+"
+rm -f *.png *.pdf FindFiles.log
+cd $OMLIBRARY
+grep -v http:// *.html | grep -v [Mm][Oo][Dd][Ee][Ll][Ii][Cc][Aa]:// | egrep -o \"[A-Za-z_0-9%.: -]*/[A-Za-z_0-9%.:/ -]*\\.(png|jpg|pdf)\" | cut -d: -f2- | sort -u | tr -d \\\" | sed 's/ /%20/g' > tmp
+for f in `cat tmp`; do
+  f=`echo $f | sed 's/%20/ /'`
+  if test -f \"$OMLIBRARY/$f\"; then
+     `echo $f`
+    d=`dirname \"$f\"`
+#   mkdir -p \"$d\"
+#    cp \"$OMLIBRARY/$f\" \"$f\"
+  else
+    echo Not found: $f | tee -a FindFiles.log
+  fi
+done
+");
+
+writeFile(stringAdd(targetDir,"style.css"),"
+table
+{
+    border-color: black;
+    border-width: 1px 1px 1px 1px;
+    border-style: solid;
+    border-spacing: 0;
+    border-collapse: collapse;
+}
+
+table td,th
+{
+    border-color: black;
+    border-width: 1px 1px 1px 1px;
+    border-style: solid;
+    margin: 0;
+    padding: 4px;
+}
+
+pre
+{
+    white-space: pre-wrap; /* CSS 3 */
+}
+");
+
+writeFile("FilterTidy.sh","#!/bin/bash
+grep -v DOCTYPE tidy.err | grep -v \"<body>\" |grep -v \"<html>\\|</html>\" |grep -v lacks | grep -B1 Warning > tidy.filtered
+");
+
+system("rm -f tidy.out tidy.err tidy.filtered");
+system("mkdir -p old-html-tmp");
+system("cp " + targetDir +"*.html old-html-tmp/");
+getErrorString();
+"Tidy.py";
+system("python Tidy.py 2> tidy.err");
+"FilterTidy.sh";
+system("bash FilterTidy.sh");
+"FindFiles.sh";
+system("bash FindFiles.sh");
+system("rm -f ModelicaDocumentation.tar.xz");
+system("mkdir -p " + dirs);
+"tar";
+dirs;
+cmd := "tar cJf ModelicaDocumentation.tar.xz --dereference style.css *.html " + dirs + " GenerateDoc.mos FindFiles.log tidy.log";
+//system(cmd);
+getErrorString();
