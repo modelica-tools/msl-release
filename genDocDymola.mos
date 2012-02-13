@@ -1,4 +1,5 @@
 // Dymola script in order to generate the documentation
+// THIS DOES NOT WORK YET!!!
 openModel("Modelica/package.mo")
 exportHTMLDirectory("Modelica.UsersGuide","Resources/help")
 exit()
