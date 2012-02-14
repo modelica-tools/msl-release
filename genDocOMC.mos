@@ -310,6 +310,8 @@ h1
     color:rgb(153,0,0);
 }
 
+h1 a {font-size:small;}
+
 table
 {
     border-color: black;
