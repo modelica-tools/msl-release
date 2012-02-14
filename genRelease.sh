@@ -11,7 +11,7 @@ mkdir -p "$MODELICAPATH"
 svn export "https://svn.modelica.org/projects/Modelica/tags/$tag" "."
 ## Export using git (for testing)
 ##git archive --remote=$MODELICALIBRARIES $tag | tar -x -C "$MODELICAPATH"
-#mv "$MODELICAPATH/Modelica" "$MODELICAPATH/Modelica $releaseVersion"
+mv "$MODELICAPATH/Modelica" "$MODELICAPATH/Modelica $releaseVersion"
 ## Call Dymola to generate the HTML documentation
 ## CURRENTLY NOT WORKING
 ##mkdir -p Modelica/Resources/help # not yet created by Dymola (bug)
