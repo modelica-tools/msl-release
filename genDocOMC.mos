@@ -119,7 +119,7 @@ algorithm
   <h1><a href = \\\"index.html\\\">.</a>\";
   for ident in strs[1:end-1] loop
     compound := if compound == \"\" then ident else compound+\".\"+ident;
-    file := compound+\".html\";
+    file := filename(compound+\".html\");
     head := head + \"<a href = \\\"\"+file+\"\\\">\"+ident+\"</a>.\";
   end for;
   head := head + strs[end] + \"</h1>\";
@@ -132,8 +132,11 @@ function itemString
 protected
   String docInfo, revision;
 algorithm
-  docInfo := if item.docInfo[1] == \"\" or (not OpenModelica.Scripting.regexBool(docInfo,\"^.*<[Hh][Tt][Mm][Ll]>.*$\"))
+  docInfo := if item.docInfo[1] == \"\"
     then preSuffixIfNotEmpty(\"<h2><a name=\\\"info\\\">Information</a></h2><pre>\", item.comment, \"</pre>\")
+    else if OpenModelica.Scripting.regexBool(item.docInfo[1],\"<html>\") or OpenModelica.Scripting.regexBool(item.docInfo[1],\"<HTML>\")
+    then \"<h2><a name=\\\"info\\\">Information</a></h2>\" + item.docInfo[1]
+    else preSuffixIfNotEmpty(\"<h2><a name=\\\"info\\\">Information</a></h2><pre>\", item.docInfo[1], \"</pre>\");
     else \"<h2><a name=\\\"info\\\">Information</a></h2>\" + item.docInfo[1];
   revision := if item.docInfo[2] <> \"\" then \"<h2><a name=\\\"revisions\\\">Revisions</a></h2>\" + item.docInfo[2] else \"\";
   res := item.head + docInfo + item.interface + item.short + item.contents + revision + version + \"</body>\";
@@ -143,6 +146,11 @@ function itemFile
   input Item item;
   output String file := item.file;
 end itemFile;
+
+function toHtml
+  input String str;
+  output String ostr := OpenModelica.Scripting.stringReplace(OpenModelica.Scripting.stringReplace(OpenModelica.Scripting.stringReplace(str,\"&\",\"&amp;\"),\"<\",\"&lt;\"),\">\",\"&gt;\");
+end toHtml;
 
 record Item
   String file;
@@ -170,14 +178,14 @@ items:={Item(
         "<h2>Contents</h2>\n<table><tr><th>Name</th><th>Description</th></tr>",
         sum("<tr><td><a href=\"" + filename(OpenModelica.Scripting.typeNameString(cl)) + ".html\">" +
              last(OpenModelica.Scripting.typeNameStrings(cl)) + "</a></td>" + "<td>" +
-             OpenModelica.Scripting.stringReplace(OpenModelica.Scripting.getClassComment(cl),"&","&amp;") +
+              toHtml(OpenModelica.Scripting.getClassComment(cl)) +
              "</td></tr>\n"
              for cl in OpenModelica.Scripting.getClassNames(c,qualified=true,sort=true)),
         "</table>"
         ),
-      OpenModelica.Scripting.stringReplace(OpenModelica.Scripting.getClassComment(c),"&","&amp;"),
-      preSuffixIfNotEmpty("\n<h4><a name=\"text\">Interface</a></h4>\n<blockquote><pre>",OpenModelica.Scripting.list(c,interfaceOnly=true),"</pre></blockquote>"),
-      preSuffixIfNotEmpty("\n<h4><a name=\"text\">Definition</a></h4>\n<blockquote><pre>",OpenModelica.Scripting.list(c,shortOnly=true),"</pre></blockquote>")
+      toHtml(OpenModelica.Scripting.getClassComment(c)),
+      preSuffixIfNotEmpty("\n<h4><a name=\"interface\">Interface</a></h4>\n<blockquote><pre>",toHtml(OpenModelica.Scripting.list(c,interfaceOnly=true)),"</pre></blockquote>"),
+      preSuffixIfNotEmpty("\n<h4><a name=\"definition\">Definition</a></h4>\n<blockquote><pre>",toHtml(OpenModelica.Scripting.list(c,shortOnly=true)),"</pre></blockquote>")
     ) for c in allClassNames};
 echo(true);
 "Start writing items to file";
@@ -270,20 +278,23 @@ for filepath in sorted(glob.glob('"+targetDir+"*.html')):
 #  sys.stdout.write(tag)  # not much point in writing the tags to stdout
   sys.stderr.write(tag)
   pid = sub.call(['tidy', '-modify', '-quiet', filepath])
-  with open(filepath,'r') as html_file:
-    soup = BeautifulSoup(html_file)
-    for a in soup.findAll('a'):
-      try:
-        a['href'] = linkreplace(a['href'])
-      except:
-        pass
-      for img in soup.findAll('img'):
+  if pid <> 2:
+    with open(filepath,'r') as html_file:
+      soup = BeautifulSoup(html_file)
+      for a in soup.findAll('a'):
         try:
-          img['src'] = linkreplace(img['src'])
+          a['href'] = linkreplace(a['href'])
         except:
           pass
-  with open(filepath,'w') as html_file:
-    html_file.write(soup.__str__())
+        for img in soup.findAll('img'):
+          try:
+            img['src'] = linkreplace(img['src'])
+          except:
+            pass
+    with open(filepath,'w') as html_file:
+      html_file.write(soup.__str__())
+  else:
+    print('Tidy failed with %s, skipping link-replacement for %s!'  % (pid,filepath))
 ");
 
 writeFile("FindFiles.sh","#!/bin/bash
