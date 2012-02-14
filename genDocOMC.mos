@@ -303,6 +303,13 @@ rm -f tmp
 ");
 
 writeFile(stringAdd(targetDir,"style.css"),"
+h1
+{
+    font-family: mono;
+    font-size: x-large;
+    color:green;
+}
+
 table
 {
     border-color: black;
