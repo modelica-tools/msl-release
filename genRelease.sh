@@ -15,7 +15,7 @@ mv "$MODELICAPATH/Modelica" "$MODELICAPATH/Modelica $releaseVersion"
 ## Call Dymola to generate the HTML documentation
 ## CURRENTLY NOT WORKING
 ##mkdir -p Modelica/Resources/help # not yet created by Dymola (bug)
-##dymola "$currDir/generateHTML.mos"
+##dymola "$currDir/genDocDymola.mos"
 #
 # Call OpenModelica to generate the HTML help files
 omc "$currDir/genDocOMC.mos"
