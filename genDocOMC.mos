@@ -263,8 +263,8 @@ os.chdir('"+targetDir+"') # this is needed for check_local_files()
 repls = ["+replaceCommands+"
  (re.compile(r'/Modelica/'), r'/Modelica%20"+relVer+"/'),
  (re.compile(r' '), r'%20'),
- (re.compile(r'[Mm][Oo][Dd][Ee][Ll][Ii][Cc][Aa]://([A-Za-z0-9.\\'()_]*#)'), r'\\1.html#'),
- (re.compile(r'[Mm][Oo][Dd][Ee][Ll][Ii][Cc][Aa]://([A-Za-z0-9.\\'()_]*)'), r'\\1.html'),
+ (re.compile(r'[Mm][Oo][Dd][Ee][Ll][Ii][Cc][Aa]://([A-Za-z0-9.\\'()_-]*)#'), r'\\1.html#'),
+ (re.compile(r'[Mm][Oo][Dd][Ee][Ll][Ii][Cc][Aa]://([A-Za-z0-9.\\'()_-]*)'), r'\\1.html'),
 ]
 
 def linkreplace(link):
@@ -279,7 +279,8 @@ def check_local_files(uri):
   uri = uri.replace('%20', ' ')
   with open('MissingFiles.log', 'a') as log_file:
     if not uri.startswith(('http://','https://','mailto:','ftp://','#')):
-      if not os.path.exists(uri):
+      filename = uri.split('#', 1)[0]
+      if not os.path.exists(filename):
         log_msg = tag+'Not found: %s\\n' % uri
 	sys.stdout.write(log_msg)
         log_file.write(log_msg) # lets also record that in the log file
