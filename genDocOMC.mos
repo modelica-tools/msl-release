@@ -34,7 +34,7 @@ echo(true);
 setDebugFlags("nogen"); /* Don't generate dll/so-files when instantiating classes (performance) */
 
 /* Some variables need to be provided as env variabels,e.g.,:
- *  $ export MODELICALIBRARIES="/path/to/library/root/dir"
+ *  $ export MODELICAPATH="/path/to/library/root/dir"
  *  $ export releaseVersion="3.2"
  */
 rootDir := getEnvironmentVar("MODELICAPATH");
@@ -277,12 +277,12 @@ def linkreplace(link):
 
 def check_local_files(uri):
   uri = uri.replace('%20', ' ')
-  with open('MissingFiles.log', 'w') as log_file:
+  with open('MissingFiles.log', 'a') as log_file:
     if not uri.startswith(('http://','https://','mailto:','ftp://','#')):
       if not os.path.exists(uri):
-        log_msg = tag+'Not found: %s \\n' % uri
+        log_msg = tag+'Not found: %s\\n' % uri
 	sys.stdout.write(log_msg)
-        log_file.write(log_msg) # for some reason nothing is written out yet
+        log_file.write(log_msg) # lets also record that in the log file
 
 for filepath in sorted(glob.glob('"+targetDir+"*.html')):
   tag = '[Checking file %s]:\\n' % filepath
