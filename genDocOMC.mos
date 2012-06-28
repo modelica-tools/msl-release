@@ -172,7 +172,7 @@ items:={Item(
       head(OpenModelica.Scripting.typeNameStrings(c)),
       OpenModelica.Scripting.getDocumentationAnnotation(c),
       preSuffixIfNotEmpty(
-        "<h2>Contents</h2>\n<table><tr><th>Name</th><th>Description</th></tr>",
+        "<h2>Contents</h2>\n<table summary=\"Items\"><tr><th>Name</th><th>Description</th></tr>",
         sum("<tr><td><a href=\"" + filename(OpenModelica.Scripting.typeNameString(cl)) + ".html\">" +
              last(OpenModelica.Scripting.typeNameStrings(cl)) + "</a></td>" + "<td>" +
               toHtml(OpenModelica.Scripting.getClassComment(cl)) +
@@ -201,7 +201,7 @@ filetmp := stringAdd(targetDir,"index.html");
 writeFile(filetmp, "<html><head><title>Modelica Documentation</title><link href=\"style.css\" rel=\"stylesheet\" type=\"text/css\" /></head><body><h1>Modelica Documentation</h1>\n");
 writeFile(filetmp, "<p>This is a listing of the available documentation of the Modelica Standard Library and its related libraries.</p>\n", append = true);
 writeFile(filetmp, "<h2>Libraries</h2>\n", append = true);
-writeFile(filetmp, "<table><tr><th>Name</th><th>Description</th><th>Version</th></tr>", append = true);
+writeFile(filetmp, "<table summary=\"Libraries\"><tr><th>Name</th><th>Description</th><th>Version</th></tr>", append = true);
 for cl in classNames loop
   file := getSourceFile(cl);
   base := basename(file);
@@ -228,7 +228,7 @@ if genBuiltin then
   writeFile(filetmp, "<h2>Builtin Environment</h2>\n", append = true);
   writeFile(filetmp, "<p>This is a listing of builtin Modelica functions of OpenModelica and the documentation for OpenModelica-specific scripting.</p>\n", append = true);
 
-  writeFile(filetmp, "<table><tr><th>Name</th><th>Description</th><th>Version</th></tr>", append = true);
+  writeFile(filetmp, "<table summary=\"Builtin Environment\"><tr><th>Name</th><th>Description</th><th>Version</th></tr>\n", append = true);
   for cl in classNames loop
     file := getSourceFile(cl);
     base := basename(file);
@@ -238,7 +238,7 @@ if genBuiltin then
       modelVersion := getVersion(cl);
       comment := OpenModelica.Scripting.stringReplace(getClassComment(cl),"&","&amp;"); // lets escape "&" on the fly
       fileName := filename(contentStr);
-      writeFile(filetmp, "<tr><td><a href=\"" + fileName + ".html\">" + contentStrToks[end] + "</a></td><td>" + comment + "</td><td>" + modelVersion + "</td></tr>", append = true);
+      writeFile(filetmp, "<tr><td><a href=\"" + fileName + ".html\">" + contentStrToks[end] + "</a></td><td>" + comment + "</td><td>" + modelVersion + "</td></tr>\n", append = true);
     end if;
   end for;
   writeFile(filetmp, "</table>\n", append = true);
