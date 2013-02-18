@@ -40,13 +40,16 @@ setDebugFlags("nogen"); /* Don't generate dll/so-files when instantiating classe
 rootDir := getEnvironmentVar("MODELICAPATH");
 relVer  := getEnvironmentVar("releaseVersion");
 setModelicaPath(rootDir);
-loadFile(rootDir+"/ModelicaServices-Variants/Default/ModelicaServices/package.mo");
+"Load MSL";
 loadModel(Modelica,{relVer});
-loadModel(ModelicaReference);
+loadModel(ModelicaServices,{relVer});
+loadModel(ModelicaReference,{relVer});
 loadModel(ObsoleteModelica3);
-// loadModel(ModelicaTest);
-// loadModel(Modelica_LinearSystems2);
+loadModel(ModelicaTest);
+"Load extra lib(s)";
 // loadModel(BioChem);
+/* Load extra libraries directly from a custom file location (even outside the path) using: */
+// loadFile("/path/to/library/package.mo");
 getErrorString();
 
 /* Customisation */
@@ -54,12 +57,12 @@ getErrorString();
 // should we generate documentation for OM built-in functions?
 genBuiltin := false;
 // Defining and creating the output directory for html files:
-MSLdir := dirname(getSourceFile(Modelica));
+MSLdir := dirname(OpenModelica.Scripting.getSourceFile(Modelica));
 // Define where the HTML files should go:
 targetDir := MSLdir+"/Resources/help/";
 // Create the target directory:
 system("mkdir -p \""+targetDir+"\"");
-// Definethe relative path to the root directory
+// Define the relative path to the root directory
 relativeRootDir := "../../../";
 
 getErrorString();
@@ -177,7 +180,7 @@ items:={Item(
              last(OpenModelica.Scripting.typeNameStrings(cl)) + "</a></td>" + "<td>" +
               toHtml(OpenModelica.Scripting.getClassComment(cl)) +
              "</td></tr>\n"
-             for cl in OpenModelica.Scripting.getClassNames(c,qualified=true,sort=true)),
+             for cl in OpenModelica.Scripting.getClassNames(c,qualified=true,sort=false)),
         "</table>"
         ),
       toHtml(OpenModelica.Scripting.getClassComment(c)),
@@ -213,10 +216,10 @@ for cl in classNames loop
       /* The replaceCommands are used in the Python-script generated later. These are sed-style replacements with & as delimiter to avoid escaping slashes. */
       // replaceCommands := replaceCommands + "\n (re.compile('^[Mm][Oo][Dd][Ee][Ll][Ii][Cc][Aa]://"+contentStrToks[end]+"/'),'"+dirname(file)+"/'),";
       replaceCommands := replaceCommands + "\n (re.compile(r'^[Mm][Oo][Dd][Ee][Ll][Ii][Cc][Aa]://"+contentStrToks[end]+"/'),'"+relativeRootDir+contentStrToks[end]+"/'),";
-      dirpaths := strtok(dirname(file),"/");
+      dirpaths := strtok(OpenModelica.Scripting.dirname(file),"/");
       dirs := dirs + " \"" + dirpaths[end] + "\" ";
     end if;
-    comment := OpenModelica.Scripting.stringReplace(getClassComment(cl),"&","&amp;"); // lets escape "&" on the fly
+    comment := OpenModelica.Scripting.stringReplace(OpenModelica.Scripting.getClassComment(cl),"&","&amp;"); // lets escape "&" on the fly
     contentStr := typeNameString(cl);
     fileName := filename(contentStr);
     writeFile(filetmp, "<tr><td><a href=\"" + fileName + ".html\">" + contentStrToks[end] + "</a></td><td>" + comment + "</td><td>" + modelVersion + "</td></tr>", append = true);
@@ -260,6 +263,8 @@ os.chdir('"+targetDir+"') # this is needed for check_local_files()
 
 repls = ["+replaceCommands+"
  (re.compile(r'/Modelica/'), r'/Modelica%20"+relVer+"/'),
+ (re.compile(r'/ModelicaReference/'), r'/ModelicaReference%20"+relVer+"/'),
+ (re.compile(r'/ModelicaServices/'), r'/ModelicaServices%20"+relVer+"/'),
  (re.compile(r' '), r'%20'),
  (re.compile(r'[Mm][Oo][Dd][Ee][Ll][Ii][Cc][Aa]://([A-Za-z0-9.\\'()_-]*)#'), r'\\1.html#'),
  (re.compile(r'[Mm][Oo][Dd][Ee][Ll][Ii][Cc][Aa]://([A-Za-z0-9.\\'()_-]*)'), r'\\1.html'),
@@ -344,7 +349,18 @@ pre
 ");
 
 writeFile("FilterTidy.sh","#!/bin/bash
-grep -v DOCTYPE tidy.err | grep -v \"<body>\" |grep -v \"<html>\\|</html>\" |grep -v lacks |grep -v apos | grep -B1 Warning > tidy.filtered
+grep -v DOCTYPE tidy.err | grep -v \"<body>\" |grep -v \"<html>\\|</html>\" |grep -v apos |grep -v lacks |grep -B1 Warning > tidy.filtered
+");
+
+writeFile("Documentation.html","<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.0 Transitional//EN\">
+<html>
+<head>
+<title>Redirect to Modelica Documentation</title>
+<meta http-equiv=\"REFRESH\" content=\"0;url=Modelica%20"+relVer+"/Resources/help/index.html\"></head>
+<body>
+You are getting redirected to the HTML documentation of the Modelica Standard Library.
+</body>
+</html>
 ");
 
 echo(true);
@@ -354,8 +370,12 @@ system("rm -f tidy.out tidy.err tidy.filtered");
 "Copying original HTML files to 'old-html-tmp'";
 system("mkdir -p old-html-tmp");
 system("cp \""+targetDir+"\"*.html old-html-tmp/");
+
 "Copying generation script to the help directory";
 system("cp genDocOMC.mos \""+targetDir+"\"");
+
+"Copying HTML start page to root directory";
+system("cp Documentation.html \""+rootDir+"\"/");
 
 "Tidy.py";
 system("python Tidy.py 2> tidy.err");
