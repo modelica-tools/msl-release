@@ -278,7 +278,7 @@ def linkreplace(link):
       pass
   return link
 
-def check_local_files(uri):
+def check_local_files(uri, tag):
   uri = uri.replace('%20', ' ')
   with open('MissingFiles.log', 'a') as log_file:
     if not uri.startswith(('http://','https://','mailto:','ftp://','#')):
@@ -299,13 +299,13 @@ for filepath in sorted(glob.glob('"+targetDir+"*.html')):
       for a in soup.findAll('a'):
         try:
           a['href'] = linkreplace(a['href'])
-	  check_local_files(a['href'])
+	  check_local_files(a['href'], tag)
         except:
           pass
       for img in soup.findAll('img'):
         try:
           img['src'] = linkreplace(img['src'])
-	  check_local_files(img['src'])
+	  check_local_files(img['src'], tag)
         except:
           pass
     with open(filepath,'w') as html_file:
