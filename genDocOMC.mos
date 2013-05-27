@@ -71,7 +71,7 @@ echo(false);
 allClassNames:=getClassNames(builtin=genBuiltin,recursive=true,sort=true);
 system("date -u +%FT%TZ > tmp");
 genTimeStamp := readFile("tmp");
-version := "<hr />Generated at " + genTimeStamp +  " by <a href=\"http://openmodelica.org\">OpenModelica</a>" + getVersion() + " using <a href=\"genDocOMC.mos\">genDocOMC.mos</a>";
+version := "<hr />Generated at " + genTimeStamp +  " by <a href=\"http://openmodelica.org\">OpenModelica</a>" + getVersion();
 
 echo(true);
 "classNames";
@@ -372,8 +372,8 @@ system("rm -f tidy.out tidy.err tidy.filtered");
 system("mkdir -p old-html-tmp");
 system("cp \""+targetDir+"\"*.html old-html-tmp/");
 
-"Copying generation script to the help directory";
-system("cp genDocOMC.mos \""+targetDir+"\"");
+// "Copying generation script to the help directory";
+// system("cp genDocOMC.mos \""+targetDir+"\"");
 
 "Copying HTML start page to root directory";
 system("cp Documentation.html \""+rootDir+"\"/");
