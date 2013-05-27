@@ -113,6 +113,7 @@ protected
 algorithm
   head :=
 \"<head>
+  <meta http-equiv=\\\"Content-Type\\\" content=\\\"text/html; charset=utf-8\\\" />
   <link href=\\\"style.css\\\" rel=\\\"stylesheet\\\" type=\\\"text/css\\\" />
   <title>\"+sum(s + \".\" for s in strs[1:end-1])+strs[end]+\"</title>
   </head>
@@ -201,7 +202,7 @@ echo(false);
 dirs := "";
 replaceCommands := "";
 filetmp := stringAdd(targetDir,"index.html");
-writeFile(filetmp, "<html><head><title>Modelica Documentation</title><link href=\"style.css\" rel=\"stylesheet\" type=\"text/css\" /></head><body><h1>Modelica Documentation</h1>\n");
+writeFile(filetmp, "<html><head><meta http-equiv=\"Content-Type\" content=\"text/html; charset=utf-8\" /><title>Modelica Documentation</title><link href=\"style.css\" rel=\"stylesheet\" type=\"text/css\" /></head><body><h1>Modelica Documentation</h1>\n");
 writeFile(filetmp, "<p>This is a listing of the available documentation of the Modelica Standard Library and its related libraries.</p>\n", append = true);
 writeFile(filetmp, "<h2>Libraries</h2>\n", append = true);
 writeFile(filetmp, "<table summary=\"Libraries\"><tr><th>Name</th><th>Description</th><th>Version</th></tr>", append = true);
@@ -251,7 +252,7 @@ writeFile(filetmp, version, append = true);
 writeFile(filetmp, "</body>\n</html>", append = true);
 
 writeFile("Tidy.py","#!/usr/bin/env python
-from __future__ import with_statement
+# -*- coding: utf-8 -*-
 from BeautifulSoup import BeautifulSoup
 import subprocess as sub
 import re
@@ -292,7 +293,7 @@ for filepath in sorted(glob.glob('"+targetDir+"*.html')):
   tag = '[Checking file %s]:\\n' % filepath
 #  sys.stdout.write(tag)  # not much point in writing the tags to stdout
   sys.stderr.write(tag)
-  pid = sub.call(['tidy', '-modify', '-quiet', filepath])
+  pid = sub.call(['tidy', '-utf8', '-modify', '-asxhtml', '--add-xml-decl', 'yes', '-quiet', filepath])
   if pid <> 2:
     with open(filepath,'r') as html_file:
       soup = BeautifulSoup(html_file)
