@@ -12,7 +12,7 @@ gen=omc
 tag=${1:?}
 currDir=`pwd`
 releaseDir="Modelica_${tag:1}"
-export releaseVersion="`echo ${tag:1} |cut -d_ -f1`"
+export releaseVersion="`echo ${tag:1} |cut -d+ -f1`"
 export MODELICAPATH="/tmp/MSLrelease/$releaseDir"
 # Clean up of previous script runs
 rm -rf "/tmp/MSLrelease"
