@@ -68,6 +68,15 @@ relativeRootDir := "../../../";
 getErrorString();
 
 echo(false);
+//self:=getInstallationDirectoryPath() + "/share/doc/omc/testmodels/GenerateDoc.mos";getErrorString();
+py:=getInstallationDirectoryPath() + "/share/doc/omc/testmodels/generate_icons.py";getErrorString();
+commands:={"(ulimit -t 600 ; python "+py+" --quiet --output-dir Icons "+typeNameString(cl)+" )" for cl in getClassNames(builtin=false)};getErrorString();
+res:=system_parallel(commands);getErrorString();
+system("rm -f *.json");getErrorString();
+/* if max(res) <> 0 then
+  exit(1);
+end if; */
+
 allClassNames:=getClassNames(builtin=genBuiltin,recursive=true,sort=true);
 system("date -u +%FT%TZ > tmp");
 genTimeStamp := readFile("tmp");
@@ -105,8 +114,27 @@ function preSuffixIfNotEmpty
   output String out := if str <> \"\" then prefix + str + suffix else \"\";
 end preSuffixIfNotEmpty;
 
+function svgIcon
+  input String file;
+  input String link;
+  input String cssClass;
+  input Boolean readSymlinks;
+  output String tag;
+protected
+  String hashedName;
+algorithm
+  if OpenModelica.Scripting.regularFileExists(file) then
+    hashedName := if readSymlinks then OpenModelica.Scripting.dirname(file) + \"/\" + OpenModelica.Scripting.basename(OpenModelica.Scripting.realpath(file)) else file;
+    tag := \"<a href=\\\"\" + (if link == file then hashedName else link) + \"\\\"><img class=\\\"\"+cssClass+\"\\\" src=\\\"\"+ hashedName +\"\\\" /></a> \";
+  else
+    tag := \"\";
+  end if;
+end svgIcon;
+
 function head
   input String strs[:];
+  input String svgFile;
+  input Boolean readSymlinks;
   output String head;
 protected
   String compound := \"\", file;
@@ -118,13 +146,13 @@ algorithm
   <title>\"+sum(s + \".\" for s in strs[1:end-1])+strs[end]+\"</title>
   </head>
   <body>
-  <h1><a href = \\\"index.html\\\">.</a>\";
+  <h1>\" + svgIcon(\"Icons/\" + svgFile,\"Icons/\" + svgFile,\"svgiconhead\",readSymlinks=readSymlinks) + \"<a class=\\\"omc-h1-a\\\" href=\\\"index.html\\\">.</a>\";
   for ident in strs[1:end-1] loop
     compound := if compound == \"\" then ident else compound+\".\"+ident;
     file := filename(compound+\".html\");
-    head := head + \"<a href = \\\"\"+file+\"\\\">\"+ident+\"</a>.\";
+    head := head + \"<a class=\\\"omc-h1-a\\\" href = \\\"\"+file+\"\\\">\"+ident+\"</a>.\";
   end for;
-  head := head + strs[end] + \"</h1>\";
+  head := head + \"<span class=\\\"omc-h1\\\">\" + strs[end] + \"</span></h1>\";
 end head;
 
 function itemString
@@ -173,12 +201,12 @@ end stringAdd;
 echo(false);
 items:={Item(
       filename(OpenModelica.Scripting.typeNameString(c))+".html",
-      head(OpenModelica.Scripting.typeNameStrings(c)),
+      head(OpenModelica.Scripting.typeNameStrings(c),filename(OpenModelica.Scripting.typeNameString(c))+".svg",readSymlinks=readSymlinks),
       OpenModelica.Scripting.getDocumentationAnnotation(c),
       preSuffixIfNotEmpty(
-        "<h2>Contents</h2>\n<table summary=\"Items\"><tr><th>Name</th><th>Description</th></tr>",
-        sum("<tr><td><a href=\"" + filename(OpenModelica.Scripting.typeNameString(cl)) + ".html\">" +
-             last(OpenModelica.Scripting.typeNameStrings(cl)) + "</a></td>" + "<td>" +
+        "<h2>Contents</h2>\n<table><tr><th>Name</th><th>Description</th></tr>",
+        sum("<tr><td>"+ svgIcon("Icons/" + filename(OpenModelica.Scripting.typeNameString(cl)) + ".svg",filename(OpenModelica.Scripting.typeNameString(cl)) + ".html","svgiconsmall",readSymlinks=readSymlinks) +"<a href=\"" + filename(OpenModelica.Scripting.typeNameString(cl)) + ".html\">" +
+              last(OpenModelica.Scripting.typeNameStrings(cl)) + "</a></td>" + "<td>" +
               toHtml(OpenModelica.Scripting.getClassComment(cl)) +
              "</td></tr>\n"
              for cl in OpenModelica.Scripting.getClassNames(c,qualified=true,sort=false)),
@@ -211,19 +239,18 @@ for cl in classNames loop
   base := basename(file);
   if base <> "ModelicaBuiltin.mo" then
     base := basename(file);
-    contentStrToks := typeNameStrings(cl);
     modelVersion := getVersion(cl);
+    contentStr := typeNameString(cl);
     if base == "package.mo" then
       /* The replaceCommands are used in the Python-script generated later. These are sed-style replacements with & as delimiter to avoid escaping slashes. */
-      // replaceCommands := replaceCommands + "\n (re.compile('^[Mm][Oo][Dd][Ee][Ll][Ii][Cc][Aa]://"+contentStrToks[end]+"/'),'"+dirname(file)+"/'),";
-      replaceCommands := replaceCommands + "\n (re.compile(r'^[Mm][Oo][Dd][Ee][Ll][Ii][Cc][Aa]://"+contentStrToks[end]+"/'),'"+relativeRootDir+contentStrToks[end]+"/'),";
+      replaceCommands := replaceCommands + "\n (re.compile(r'^[Mm][Oo][Dd][Ee][Ll][Ii][Cc][Aa]://"+contentStr+"/'),'"+relativeRootDir+contentStr+"/'),";
       dirpaths := strtok(OpenModelica.Scripting.dirname(file),"/");
       dirs := dirs + " \"" + dirpaths[end] + "\" ";
     end if;
-    comment := OpenModelica.Scripting.stringReplace(OpenModelica.Scripting.getClassComment(cl),"&","&amp;"); // lets escape "&" on the fly
-    contentStr := typeNameString(cl);
+    comment := OpenModelica.Scripting.stringReplace(OpenModelica.Scripting.getClassComment(cl),"&","&amp;"); // let's escape "&" on the fly
     fileName := filename(contentStr);
-    writeFile(filetmp, "<tr><td><a href=\"" + fileName + ".html\">" + contentStrToks[end] + "</a></td><td>" + comment + "</td><td>" + modelVersion + "</td></tr>", append = true);
+    writeFile(filetmp, "<tr><td>" + svgIcon("Icons/" + fileName + ".svg",fileName + ".html","svgiconsmall",readSymlinks=readSymlinks) + "<a href=\"" + fileName + ".html\">" + contentStr + "</a></td><td>" + comment + "</td><td>" + modelVersion + "</td></tr>", append = true);
+
   end if;
 end for;
 writeFile(filetmp, "</table>\n", append = true);
@@ -238,11 +265,11 @@ if genBuiltin then
     base := basename(file);
     if base == "ModelicaBuiltin.mo" then
       contentStr := typeNameString(cl);
-      contentStrToks := typeNameStrings(cl);
       modelVersion := getVersion(cl);
       comment := OpenModelica.Scripting.stringReplace(getClassComment(cl),"&","&amp;"); // lets escape "&" on the fly
       fileName := filename(contentStr);
-      writeFile(filetmp, "<tr><td><a href=\"" + fileName + ".html\">" + contentStrToks[end] + "</a></td><td>" + comment + "</td><td>" + modelVersion + "</td></tr>\n", append = true);
+      writeFile(filetmp, "<tr><td><a href=\"" + fileName + ".html\">" + contentStr + "</a></td><td>" + comment + "</td><td>" + modelVersion + "</td></tr>", append = true);
+
     end if;
   end for;
   writeFile(filetmp, "</table>\n", append = true);
@@ -269,6 +296,7 @@ repls = ["+replaceCommands+"
  (re.compile(r' '), r'%20'),
  (re.compile(r'[Mm][Oo][Dd][Ee][Ll][Ii][Cc][Aa]://([A-Za-z0-9.\\'()_-]*)#'), r'\\1.html#'),
  (re.compile(r'[Mm][Oo][Dd][Ee][Ll][Ii][Cc][Aa]://([A-Za-z0-9.\\'()_-]*)'), r'\\1.html'),
+ (re.compile(r'<[/]?body[^>]*>'), r'')
 ]
 
 def linkreplace(link):
@@ -315,15 +343,20 @@ for filepath in sorted(glob.glob('"+targetDir+"*.html')):
     print('Tidy failed with %s, skipping link-replacement for %s!'  % (pid,filepath))
 ");
 
-writeFile(stringAdd(targetDir,"style.css"),"
-h1
+writeFile(stringAdd(targetDir,"style.css"),".omc-h1
 {
     font-family: mono;
     font-size: x-large;
     color:rgb(153,0,0);
+    vertical-align: middle;
 }
 
-h1 a {font-size:large;}
+.omc-h1-a
+{
+    font-family: mono;
+    font-size: large;
+    vertical-align: middle;
+}
 
 table
 {
@@ -346,6 +379,20 @@ table td,th
 pre
 {
     white-space: pre-wrap; /* CSS 3 */
+}
+
+.svgiconhead {
+    height: 32px;
+    width: 32px;
+    vertical-align: top;
+    -o-object-fit: contain;
+}
+
+.svgiconsmall {
+    height: 20px;
+    width: 20px;
+    vertical-align: top;
+    -o-object-fit: contain;
 }
 ");
 
@@ -371,6 +418,7 @@ system("rm -f tidy.out tidy.err tidy.filtered");
 "Copying original HTML files to 'old-html-tmp'";
 system("mkdir -p old-html-tmp");
 system("cp \""+targetDir+"\"*.html old-html-tmp/");
+system("mv Icons \""+targetDir+"\"");
 
 // "Copying generation script to the help directory";
 // system("cp genDocOMC.mos \""+targetDir+"\"");

@@ -16,7 +16,6 @@ export releaseVersion="`echo ${tag:1} |cut -d+ -f1`"
 export MODELICAPATH="/tmp/MSLrelease/$releaseDir"
 # Clean up of previous script runs
 rm -rf "/tmp/MSLrelease"
-mkdir -p "$MODELICAPATH"
 
 if [ "$vcs" = "svn" ]; then
     echo Exporting archive using SVN...
@@ -24,6 +23,7 @@ if [ "$vcs" = "svn" ]; then
     svn export "https://svn.modelica.org/projects/Modelica/tags/$tag" "$MODELICAPATH"
     echo "...finished."
 else
+    mkdir -p "$MODELICAPATH"
     echo "Exporting archive using Git (for testing since no keyword expansion)..."
     # Export using git (for testing)
     git archive --remote=$MODELICALIBRARIES $tag | tar -x -C "$MODELICAPATH"
