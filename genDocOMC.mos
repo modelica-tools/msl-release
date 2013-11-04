@@ -418,6 +418,8 @@ system("rm -f tidy.out tidy.err tidy.filtered");
 "Copying original HTML files to 'old-html-tmp'";
 system("mkdir -p old-html-tmp");
 system("cp \""+targetDir+"\"*.html old-html-tmp/");
+system("rm -f Icons/*.json");
+system("for symlink in `find -type l`; do rm $symlink;  done");
 system("mv Icons \""+targetDir+"\"");
 
 // "Copying generation script to the help directory";
