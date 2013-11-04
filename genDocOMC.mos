@@ -54,6 +54,9 @@ getErrorString();
 
 /* Customisation */
 
+// should we keep readable names (nice online), or use the hashed names in the links
+// (nice if you want a zipped version to work on Windows)
+readSymlinks := true;
 // should we generate documentation for OM built-in functions?
 genBuiltin := false;
 // Defining and creating the output directory for html files:
@@ -419,7 +422,9 @@ system("rm -f tidy.out tidy.err tidy.filtered");
 system("mkdir -p old-html-tmp");
 system("cp \""+targetDir+"\"*.html old-html-tmp/");
 system("rm -f Icons/*.json");
-system("for symlink in `find -type l`; do rm $symlink;  done");
+if readSymlinks then
+  system("for symlink in `find -type l`; do rm $symlink;  done");
+end if;
 system("mv Icons \""+targetDir+"\"");
 
 // "Copying generation script to the help directory";
