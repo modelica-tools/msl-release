@@ -100,6 +100,14 @@ function filename \"Replace characters that mess with filesystems and shell expa
 ;
 end filename;
 
+function uriEncode
+  input String str;
+  output String uri;
+algorithm
+  uri := OpenModelica.Scripting.stringReplace(str,\"'\",\"%27\");
+  uri := OpenModelica.Scripting.stringReplace(uri,\" \",\"%20\");
+end uriEncode;
+
 function notLast
   input String str[:];
   output String ostr[:] := str[1:end];
@@ -128,7 +136,7 @@ protected
 algorithm
   if OpenModelica.Scripting.regularFileExists(file) then
     hashedName := if readSymlinks then OpenModelica.Scripting.dirname(file) + \"/\" + OpenModelica.Scripting.basename(OpenModelica.Scripting.realpath(file)) else file;
-    tag := \"<a href=\\\"\" + (if link == file then hashedName else link) + \"\\\"><img class=\\\"\"+cssClass+\"\\\" src=\\\"\"+ hashedName +\"\\\" /></a> \";
+    tag := \"<a href=\\\"\" + uriEncode(if link == file then hashedName else link) + \"\\\"><img class=\\\"\"+cssClass+\"\\\" src=\\\"\"+ hashedName +\"\\\" /></a> \";
   else
     tag := \"\";
   end if;
@@ -214,7 +222,7 @@ items:={Item(
       OpenModelica.Scripting.getDocumentationAnnotation(c),
       preSuffixIfNotEmpty(
         "<h2>Contents</h2>\n<table><tr><th>Name</th><th>Description</th></tr>",
-        sum("<tr><td>"+ svgIcon("Icons/" + filename(OpenModelica.Scripting.typeNameString(cl)) + ".svg",filename(OpenModelica.Scripting.typeNameString(cl)) + ".html","svgiconsmall",readSymlinks=readSymlinks) +"<a href=\"" + filename(OpenModelica.Scripting.typeNameString(cl)) + ".html\">" +
+        sum("<tr><td>"+ svgIcon("Icons/" + filename(OpenModelica.Scripting.typeNameString(cl)) + ".svg",filename(OpenModelica.Scripting.typeNameString(cl)) + ".html","svgiconsmall",readSymlinks=readSymlinks) +"<a href=\"" + uriEncode(filename(OpenModelica.Scripting.typeNameString(cl))) + ".html\">" +
               last(OpenModelica.Scripting.typeNameStrings(cl)) + "</a></td>" + "<td>" +
               toHtml(OpenModelica.Scripting.getClassComment(cl)) +
              "</td></tr>\n"
@@ -258,7 +266,7 @@ for cl in classNames loop
     end if;
     comment := toHtml(getClassComment(cl)); // let's escape "&" on the fly
     fileName := filename(contentStr);
-    writeFile(filetmp, "<tr><td>" + svgIcon("Icons/" + fileName + ".svg",fileName + ".html","svgiconsmall",readSymlinks=readSymlinks) + "<a href=\"" + fileName + ".html\">" + contentStr + "</a></td><td>" + comment + "</td><td>" + modelVersion + "</td></tr>", append = true);
+    writeFile(filetmp, "<tr><td>" + svgIcon("Icons/" + fileName + ".svg",fileName + ".html","svgiconsmall",readSymlinks=readSymlinks) + "<a href=\"" +  uriEncode(fileName) + ".html\">" + contentStr + "</a></td><td>" + comment + "</td><td>" + modelVersion + "</td></tr>", append = true);
 
   end if;
 end for;
@@ -277,7 +285,7 @@ if genBuiltin then
       modelVersion := getVersion(cl);
       comment := toHtml(getClassComment(cl)); // lets escape "&" on the fly
       fileName := filename(contentStr);
-      writeFile(filetmp, "<tr><td><a href=\"" + fileName + ".html\">" + contentStr + "</a></td><td>" + comment + "</td><td>" + modelVersion + "</td></tr>", append = true);
+      writeFile(filetmp, "<tr><td><a href=\"" + uriEncode(fileName) + ".html\">" + contentStr + "</a></td><td>" + comment + "</td><td>" + modelVersion + "</td></tr>", append = true);
 
     end if;
   end for;
@@ -303,8 +311,9 @@ repls = ["+replaceCommands+"
  (re.compile(r'/ModelicaReference/'), r'/ModelicaReference%20"+relVer+"/'),
  (re.compile(r'/ModelicaServices/'), r'/ModelicaServices%20"+relVer+"/'),
  (re.compile(r' '), r'%20'),
- (re.compile(r'[Mm][Oo][Dd][Ee][Ll][Ii][Cc][Aa]://([A-Za-z0-9.\\'()_-]*)#'), r'\\1.html#'),
- (re.compile(r'[Mm][Oo][Dd][Ee][Ll][Ii][Cc][Aa]://([A-Za-z0-9.\\'()_-]*)'), r'\\1.html'),
+ (re.compile(r'\\''), r'%27'),
+ (re.compile(r'[Mm][Oo][Dd][Ee][Ll][Ii][Cc][Aa]://([A-Za-z0-9.\\'()_-%]*)#'), r'\\1.html#'),
+ (re.compile(r'[Mm][Oo][Dd][Ee][Ll][Ii][Cc][Aa]://([A-Za-z0-9.\\'()_-%]*)'), r'\\1.html'),
  (re.compile(r'<[/]?body[^>]*>'), r'')
 ]
 
