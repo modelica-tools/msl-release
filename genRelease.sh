@@ -8,6 +8,8 @@ vcs=git
 
 # Which HTML generator should we use, [omc|dymola]:
 gen=omc
+# Standlone HTML version?
+standalone=$true
 
 tag=${1:?}
 currDir=`pwd`
@@ -37,8 +39,12 @@ mv "$MODELICAPATH/ModelicaReference" "$MODELICAPATH/ModelicaReference $releaseVe
 if [ "$gen" = "omc" ]; then
     echo "Calling OpenModelica to generate the HTML documentation..."
     # omc +showErrorMessages +d=failtrace "$currDir/genDocOMC.mos"
-    omc "$currDir/genDocOMC.mos"
-    echo "Generation of HTML documentation finished."
+    if $standalone; then
+	omc "$currDir/genDocOMC_standalone.mos"
+    else
+	omc "$currDir/genDocOMC.mos"
+    echo "Generation of standalone HTML documentation finished."
+    fi
 else
     echo "Calling Dymola to generate HTML documentaion (NOT WORKING YET)..."
     # mkdir -p Modelica/Resources/help # not yet created by Dymola (bug)

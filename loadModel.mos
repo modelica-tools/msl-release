@@ -1,0 +1,7 @@
+rootDir := getEnvironmentVar("MODELICAPATH");
+relVer  := getEnvironmentVar("releaseVersion");
+setModelicaPath(rootDir);
+
+loadModel(Modelica);
+loadModel(ObsoleteModelica3);
+loadModel(ModelicaReference);

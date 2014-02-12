@@ -45,18 +45,22 @@ loadModel(Modelica,{relVer});
 loadModel(ModelicaServices,{relVer});
 loadModel(ModelicaReference,{relVer});
 loadModel(ObsoleteModelica3);
-loadModel(ModelicaTest);
+// loadModel(ModelicaTest);
 "Load extra lib(s)";
 // loadModel(BioChem);
 /* Load extra libraries directly from a custom file location (even outside the path) using: */
 // loadFile("/path/to/library/package.mo");
+// loadFile("/home/dietmarw/.workspace/gh-modelica/Modelica_DeviceDrivers/package.mo");
+//loadFile("/home/dietmarw/.workspace/gh-modelica/VehicleInterfaces/VehicleInterfaces/package.mo");
+// loadFile("/home/dietmarw/.workspace/Modelon-HPL/HydroPower/package.mo");
+
 getErrorString();
 
 /* Customisation */
 
 // should we keep readable names (nice online), or use the hashed names in the links
 // (nice if you want a zipped version to work on Windows)
-readSymlinks := true;
+readSymlinks := false;
 // should we generate documentation for OM built-in functions?
 genBuiltin := false;
 // Defining and creating the output directory for html files:
@@ -65,8 +69,14 @@ MSLdir := dirname(OpenModelica.Scripting.getSourceFile(Modelica));
 targetDir := MSLdir+"/Resources/help/";
 // Create the target directory:
 system("mkdir -p \""+targetDir+"\"");
-// Define the relative path to the root directory
-relativeRootDir := "../../../";
+// Define the relative path to the root directory depending on MSL release or web version
+MSLrelease := true;
+if MSLrelease then
+  relativeRootDir := "../../../";
+  else
+  relativeRootDir := "../../";
+end if;
+
 
 getErrorString();
 
@@ -136,7 +146,7 @@ protected
 algorithm
   if OpenModelica.Scripting.regularFileExists(file) then
     hashedName := if readSymlinks then OpenModelica.Scripting.dirname(file) + \"/\" + OpenModelica.Scripting.basename(OpenModelica.Scripting.realpath(file)) else file;
-    tag := \"<a href=\\\"\" + uriEncode(if link == file then hashedName else link) + \"\\\"><img class=\\\"\"+cssClass+\"\\\" src=\\\"\"+ hashedName +\"\\\" /></a> \";
+    tag := \"<a href=\\\"\" + uriEncode(if link == file then hashedName else link) + \"\\\"><img class=\\\"\"+cssClass+\" nowrap\\\" src=\\\"\"+ hashedName +\"\\\" /></a>&nbsp;\";
   else
     tag := \"\";
   end if;
@@ -312,8 +322,8 @@ repls = ["+replaceCommands+"
  (re.compile(r'/ModelicaServices/'), r'/ModelicaServices%20"+relVer+"/'),
  (re.compile(r' '), r'%20'),
  (re.compile(r'\\''), r'%27'),
- (re.compile(r'[Mm][Oo][Dd][Ee][Ll][Ii][Cc][Aa]://([A-Za-z0-9.\\'()_-%]*)#'), r'\\1.html#'),
- (re.compile(r'[Mm][Oo][Dd][Ee][Ll][Ii][Cc][Aa]://([A-Za-z0-9.\\'()_-%]*)'), r'\\1.html'),
+ (re.compile(r'[Mm][Oo][Dd][Ee][Ll][Ii][Cc][Aa]://([A-Za-z0-9.\\'()_ %]*)#'), r'\\1.html#'),
+ (re.compile(r'[Mm][Oo][Dd][Ee][Ll][Ii][Cc][Aa]://([A-Za-z0-9.\\'()_ %]*)'), r'\\1.html'),
  (re.compile(r'<[/]?body[^>]*>'), r'')
 ]
 
@@ -411,6 +421,11 @@ pre
     width: 20px;
     vertical-align: top;
     -o-object-fit: contain;
+}
+
+nowrap
+{
+    white-space: nowrap
 }
 ");
 
