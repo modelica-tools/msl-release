@@ -445,6 +445,46 @@ You are getting redirected to the HTML documentation of the Modelica Standard Li
 </html>
 ");
 
+writeFile("fix-case-sensitive.py","#!/usr/bin/env python
+# Finds files *.html that have the same case-insensitive names and renames one or more of them
+# Example: Ab.html AB.html ab.html becomes: Ab.1.html ab.2.html AB.html
+
+import os
+import glob
+from subprocess import call
+
+def getFiles():
+  files = [f for f in glob.glob('*.html') if os.path.isfile(f)]
+  files.sort()
+  return files
+
+def makeCaseSensitive():
+  files = getFiles()
+  visited = {}
+  for file in files:
+    upper = file.upper()
+    if upper in visited:
+      nfile = file.split('.')
+      # Add a .1, .2, .3, etc to the name, before the .html
+      try:
+        nfile[-2] = str(int(nfile[-2]) + 1)
+      except:
+        nfile.insert(len(nfile)-1,'1')
+      nfile = '.'.join(nfile)
+      print('Renaming file %s to %s' % (file,nfile))
+      if os.path.isfile(nfile):
+        raise Exception('File already exists: ' + nfile)
+      call(['sed','-i','s/%s/%s/' % (file,nfile)] + files)
+      os.rename(file,nfile)
+      return False
+    visited[upper] = file
+  return True
+
+print('Running Python script: makeCaseSensitive')
+while not makeCaseSensitive():
+  pass
+");
+
 echo(true);
 "Removing previous generation output files...";
 system("rm -f tidy.out tidy.err tidy.filtered");
@@ -466,6 +506,9 @@ system("cp Documentation.html \""+rootDir+"\"/");
 
 "Tidy.py";
 system("python Tidy.py 2> tidy.err");
+
+// Make zip (case-insensitive)
+system("python ./fix-case-sensitive.py");
 
 "FilterTidy.sh";
 system("bash FilterTidy.sh");
