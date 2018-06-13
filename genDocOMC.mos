@@ -87,7 +87,7 @@ getErrorString();
 echo(false);
 //self:=getInstallationDirectoryPath() + "/share/doc/omc/testmodels/GenerateDoc.mos";getErrorString();
 py:=getInstallationDirectoryPath() + "/share/doc/omc/testmodels/generate_icons.py";getErrorString();
-commands:={"(ulimit -t 10000 ; python "+py+" --quiet --output-dir Icons "+typeNameString(cl)+" )" for cl in getClassNames(builtin=false)};getErrorString();
+commands:={"(ulimit -t 10000 ; python2 "+py+" --quiet --output-dir Icons "+typeNameString(cl)+" )" for cl in getClassNames(builtin=false)};getErrorString();
 //res:=system_parallel(commands);getErrorString();
 system("rm -f *.json");getErrorString();
 /* if max(res) <> 0 then
@@ -315,7 +315,7 @@ end if;
 writeFile(filetmp, version, append = true);
 writeFile(filetmp, "</body>\n</html>", append = true);
 
-writeFile("Tidy.py","#!/usr/bin/env python
+writeFile("Tidy.py","#!/usr/bin/env python2
 # -*- coding: utf-8 -*-
 from BeautifulSoup import BeautifulSoup
 import subprocess as sub
@@ -444,7 +444,7 @@ pre
 ");
 
 writeFile("FilterTidy.sh","#!/bin/bash
-grep -v DOCTYPE tidy.err | grep -v \"<body>\" |grep -v \"<html>\\|</html>\" |grep -v apos |grep -v lacks |grep -B1 Warning > tidy.filtered
+grep -v DOCTYPE tidy.err | grep -v \"<body>\" |grep -v \"<html>\\|</html>\" |grep -v apos |grep -v lacks |grep -v HTML5 |grep -B1 Warning > tidy.filtered
 ");
 
 writeFile("Documentation.html","<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.0 Transitional//EN\">
@@ -458,7 +458,7 @@ You are getting redirected to the HTML documentation of the Modelica Standard Li
 </html>
 ");
 
-writeFile("fix-case-sensitive.py","#!/usr/bin/env python
+writeFile("fix-case-sensitive.py","#!/usr/bin/env python2
 # Finds files *.html that have the same case-insensitive names and renames one or more of them
 # Example: Ab.html AB.html ab.html becomes: Ab.1.html ab.2.html AB.html
 
@@ -519,10 +519,10 @@ system("mv Icons \""+targetDir+"\"");
 system("cp Documentation.html \""+rootDir+"\"/");
 
 "Tidy.py";
-system("python Tidy.py 2> tidy.err");
+system("python2 Tidy.py 2> tidy.err");
 
 // Make zip (case-insensitive)
-system("python ./fix-case-sensitive.py");
+system("python2 ./fix-case-sensitive.py");
 
 "FilterTidy.sh";
 system("bash FilterTidy.sh");
