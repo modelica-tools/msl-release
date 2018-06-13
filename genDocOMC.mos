@@ -1,6 +1,9 @@
 /*
  * genDocOMC.mos  - HTML documentation generation script for use with Open Modelica
  *
+ * Based on https://github.com/OpenModelica/OMCompiler/blob/master/Examples/GenerateDoc.mos
+ *
+ *
  * Copyright (C) 1998-CurrentYear, Linköping University
  * Copyright (C) 2012-CurrentYear, Dietmar Winkler <dietmar.winkler@dwe.no>
  *
@@ -51,9 +54,6 @@ loadModel(ObsoleteModelica3);
 // loadModel(BioChem);
 /* Load extra libraries directly from a custom file location (even outside the path) using: */
 // loadFile("/path/to/library/package.mo");
-// loadFile("/home/dietmarw/.workspace/gh-modelica/Modelica_DeviceDrivers/package.mo");
-//loadFile("/home/dietmarw/.workspace/gh-modelica/VehicleInterfaces/VehicleInterfaces/package.mo");
-// loadFile("/home/dietmarw/.workspace/Modelon-HPL/HydroPower/package.mo");
 
 getErrorString();
 getClassNames();
