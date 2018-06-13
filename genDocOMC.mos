@@ -28,8 +28,9 @@
  *
  * $Id$
  */
+shouldEcho := true;
 
-echo(true);
+echo(shouldEcho);
 
 setDebugFlags("nogen"); /* Don't generate dll/so-files when instantiating classes (performance) */
 
@@ -86,8 +87,8 @@ getErrorString();
 echo(false);
 //self:=getInstallationDirectoryPath() + "/share/doc/omc/testmodels/GenerateDoc.mos";getErrorString();
 py:=getInstallationDirectoryPath() + "/share/doc/omc/testmodels/generate_icons.py";getErrorString();
-commands:={"(ulimit -t 600 ; python "+py+" --quiet --output-dir Icons "+typeNameString(cl)+" )" for cl in getClassNames(builtin=false)};getErrorString();
-res:=system_parallel(commands);getErrorString();
+commands:={"(ulimit -t 10000 ; python "+py+" --quiet --output-dir Icons "+typeNameString(cl)+" )" for cl in getClassNames(builtin=false)};getErrorString();
+//res:=system_parallel(commands);getErrorString();
 system("rm -f *.json");getErrorString();
 /* if max(res) <> 0 then
   exit(1);
@@ -98,7 +99,7 @@ system("date -u +%FT%TZ > tmp");
 genTimeStamp := readFile("tmp");
 version := "<hr />Generated at " + genTimeStamp +  " by <a href=\"http://openmodelica.org\">OpenModelica</a>" + getVersion();
 
-echo(true);
+echo(shouldEcho);
 "classNames";
 classNames := getClassNames(builtin=genBuiltin,sort=true);
 
@@ -214,7 +215,7 @@ end toHtml;
 record Item
   String file;
   String head;
-  String docInfo[2];
+  String docInfo[3];
   String contents;
   String comment;
   String interface;
@@ -246,14 +247,14 @@ items:={Item(
       preSuffixIfNotEmpty("\n<h4><a name=\"interface\">Interface</a></h4>\n<blockquote><pre>",toHtml(OpenModelica.Scripting.list(c,interfaceOnly=true)),"</pre></blockquote>"),
       preSuffixIfNotEmpty("\n<h4><a name=\"definition\">Definition</a></h4>\n<blockquote><pre>",toHtml(OpenModelica.Scripting.list(c,shortOnly=true)),"</pre></blockquote>")
     ) for c in allClassNames};
-echo(true);
+echo(shouldEcho);
 "Start writing items to file";
 echo(false);
 writeFile(stringAdd(targetDir,itemFile(items)) /* Vector of filenames */,itemString(items,version) /* Vector of file contents */);
 stringAdd(targetDir,itemFile(items));
 getErrorString();
 
-echo(true);
+echo(shouldEcho);
 "Finished writing " + String(size(items,1)) + " items";
 echo(false);
 
@@ -321,6 +322,7 @@ os.chdir('"+targetDir+"') # this is needed for check_local_files()
 
 repls = ["+replaceCommands+"
  (re.compile(r'/Modelica/'), r'/Modelica%20"+relVer+"/'),
+ (re.compile(r'org/Modelica%20"+relVer+"/'), r'org/Modelica/'),
  (re.compile(r'/ModelicaReference/'), r'/ModelicaReference%20"+relVer+"/'),
  (re.compile(r'/ModelicaServices/'), r'/ModelicaServices%20"+relVer+"/'),
  (re.compile(r' '), r'%20'),
@@ -485,7 +487,8 @@ while not makeCaseSensitive():
   pass
 ");
 
-echo(true);
+echo(shouldEcho);
+
 "Removing previous generation output files...";
 system("rm -f tidy.out tidy.err tidy.filtered");
 
