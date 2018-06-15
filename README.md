@@ -27,7 +27,7 @@ In order to run this script you need:
 
 ## Generate various library checks and reports
 
-The Modelica library `ReleaseChecks.mo` conatains a collection of check and diagnostic functions which can be used for the MSL or any other library
+The Modelica library `ReleaseChecks.mo` contains a collection of check and diagnostic functions which can be used for the MSL or any other library
 
 ### Dependencies
 
