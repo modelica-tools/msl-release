@@ -315,7 +315,7 @@ end if;
 writeFile(filetmp, version, append = true);
 writeFile(filetmp, "</body>\n</html>", append = true);
 
-writeFile("Tidy.py","#!/usr/bin/env python2
+writeFile("Tidy.py","#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 from BeautifulSoup import BeautifulSoup
 import subprocess as sub
@@ -458,7 +458,7 @@ You are getting redirected to the HTML documentation of the Modelica Standard Li
 </html>
 ");
 
-writeFile("fix-case-sensitive.py","#!/usr/bin/env python2
+writeFile("fix-case-sensitive.py","#!/usr/bin/env python
 # Finds files *.html that have the same case-insensitive names and renames one or more of them
 # Example: Ab.html AB.html ab.html becomes: Ab.1.html ab.2.html AB.html
 
@@ -519,10 +519,10 @@ system("mv Icons \""+targetDir+"\"");
 system("cp Documentation.html \""+rootDir+"\"/");
 
 "Tidy.py";
-system("python2 Tidy.py 2> tidy.err");
+system("python Tidy.py 2> tidy.err");
 
 // Make zip (case-insensitive)
-system("python2 ./fix-case-sensitive.py");
+system("python ./fix-case-sensitive.py");
 
 "FilterTidy.sh";
 system("bash FilterTidy.sh");

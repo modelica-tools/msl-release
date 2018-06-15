@@ -6,6 +6,9 @@
 
 # Which HTML generator should we use, [omc|dymola|no]:
 genHTML=omc
+# for syntax check only set genIcons to false
+# (icon generation is very time consuming)
+export genIcons=true
 
 tag=${1:?}
 currDir=`pwd`
