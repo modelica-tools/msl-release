@@ -85,6 +85,7 @@ getErrorString();
 
 echo(false);
 //self:=getInstallationDirectoryPath() + "/share/doc/omc/testmodels/GenerateDoc.mos";getErrorString();
+system("rm -rf Icons");getErrorString();
 py:=getInstallationDirectoryPath() + "/share/doc/omc/testmodels/generate_icons.py";getErrorString();
 commands:={"(ulimit -t 10000 ; python2 "+py+" --quiet --output-dir "+outDir+"/Icons "+typeNameString(cl)+" )" for cl in getClassNames(builtin=false)};getErrorString();
 res:=system_parallel(commands);getErrorString();
