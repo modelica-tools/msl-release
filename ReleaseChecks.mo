@@ -65,9 +65,20 @@ package ReleaseChecks
       end for;
     end if;
     annotation (Documentation(info="<html>
-  Modified version of <a href=\"modelica://ModelManagement.Structure.AST.Examples.countModelsInPackage\">
-  countModelsInPackage</a> from ModelManagement library of Dymola</html>"));
+Modified version of <a href=\"modelica://ModelManagement.Structure.AST.Examples.countModelsInPackage\">
+countModelsInPackage</a> from ModelManagement library of Dymola</html>"));
   end countClassesInPackage;
+
+  function genDoc "Export HTML documentation"
+    extends Modelica.Icons.Function;
+
+    input String name = "Modelica" "Name of Modelica model or package";
+    input String directory = Modelica.Utilities.Files.loadResource("modelica://" + name + "/Resources/help") "Directory of exported HTML files";
+  algorithm
+    exportHTMLDirectory(name, directory);
+    annotation (Documentation(info="<html>
+Generate HTML documentation from Modelica model or package in Dymola</html>"));
+  end genDoc;
 
   package Internal
     extends Modelica.Icons.InternalPackage;
