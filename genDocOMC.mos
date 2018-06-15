@@ -44,6 +44,8 @@ setDebugFlags("nogen"); /* Don't generate dll/so-files when instantiating classe
 rootDir := getEnvironmentVar("MODELICAPATH");
 relVer  := getEnvironmentVar("releaseVersion");
 outDir  := getEnvironmentVar("outDir");
+genIcons:= getEnvironmentVar("genIcons");
+
 setModelicaPath(rootDir);
 "Load MSL";
 loadModel(Modelica,{relVer});
@@ -85,11 +87,13 @@ getErrorString();
 
 echo(false);
 //self:=getInstallationDirectoryPath() + "/share/doc/omc/testmodels/GenerateDoc.mos";getErrorString();
-system("rm -rf Icons");getErrorString();
-py:=getInstallationDirectoryPath() + "/share/doc/omc/testmodels/generate_icons.py";getErrorString();
-commands:={"(ulimit -t 10000 ; python2 "+py+" --quiet --output-dir "+outDir+"/Icons "+typeNameString(cl)+" )" for cl in getClassNames(builtin=false)};getErrorString();
-res:=system_parallel(commands);getErrorString();
-system("rm -f *.json");getErrorString();
+if genIcons=="true" then
+  system("rm -rf Icons");getErrorString();
+  py:=getInstallationDirectoryPath() + "/share/doc/omc/testmodels/generate_icons.py";getErrorString();
+  commands:={"(ulimit -t 10000 ; python "+py+" --quiet --output-dir "+outDir+"/Icons "+typeNameString(cl)+" )" for cl in getClassNames(builtin=false)};getErrorString();
+  res:=system_parallel(commands);getErrorString();
+  system("rm -f *.json");getErrorString();
+end if;
 /* if max(res) <> 0 then
   exit(1);
 end if; */
@@ -510,7 +514,7 @@ system("rm -f Icons/*.json");
 if rmSymlinks then
   system("for symlink in `find -type l`; do rm $symlink;  done");
 end if;
-system("mv Icons \""+targetDir+"\"");
+system("cp Icons \""+targetDir+"\"");
 
 // "Copying generation script to the help directory";
 // system("cp genDocOMC.mos \""+targetDir+"\"");
