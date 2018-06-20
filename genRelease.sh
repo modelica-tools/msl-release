@@ -45,8 +45,12 @@ else
     echo "Running without HTML generation"
 fi
 
-echo "Generating the zip file..."
+# Remove stuff that should not be part of the release:
 cd "$MODELICAPATH"
+rm -rf "ModelicaTest"
+rm -rf "ModelicaTestOverdetermined.mo"
+
 # Create the release zip file
+echo "Generating the zip file..."
 zip -qrFS "$outDir/ModelicaStandardLibrary_${tag}.zip" .
 echo "...finished."
