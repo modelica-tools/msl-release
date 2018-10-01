@@ -6,6 +6,7 @@
 
 # Which HTML generator should we use, [omc|dymola|no]:
 genHTML=omc
+
 # for syntax check only set genIcons to false
 # (icon generation is very time consuming)
 export genIcons=true
@@ -25,7 +26,7 @@ echo "Exporting archive using Git (with keyword expansion and filtering)..."
 git archive --remote=$MODELICALIBRARIES $tag | tar -x -C "$MODELICAPATH"
     echo "...finished."
 
-# Creating directory structure with release numbesr
+# Creating directory structure with release numbers
 mv "$MODELICAPATH/Modelica" "$MODELICAPATH/Modelica $releaseVersion"
 mv "$MODELICAPATH/ModelicaServices" "$MODELICAPATH/ModelicaServices $releaseVersion"
 mv "$MODELICAPATH/ModelicaReference" "$MODELICAPATH/ModelicaReference $releaseVersion"
@@ -45,10 +46,16 @@ else
     echo "Running without HTML generation"
 fi
 
+# Copy the Icons dir to zip source
+if [ "$genIcons" = "true" ]; then
+    cp -r "$outDir/Icons" "$MODELICAPATH/Modelica $releaseVersion/Resources/help/"
+fi
+
 # Remove stuff that should not be part of the release:
 cd "$MODELICAPATH"
-rm -rf "ModelicaTest"
-rm -rf "ModelicaTestOverdetermined.mo"
+rm -rf "$MODELICAPATH/ModelicaTest"
+rm -rf "$MODELICAPATH/ModelicaTestOverdetermined.mo"
+rm -rf "$MODELICAPATH/Modelica $releaseVersion/Resources/help/MissingFiles.log"
 
 # Create the release zip file
 echo "Generating the zip file..."
