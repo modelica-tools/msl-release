@@ -44,7 +44,8 @@ setDebugFlags("nogen"); /* Don't generate dll/so-files when instantiating classe
 rootDir := getEnvironmentVar("MODELICAPATH");
 relVer  := getEnvironmentVar("releaseVersion");
 outDir  := getEnvironmentVar("outDir");
-genIcons:= getEnvironmentVar("genIcons");
+htmlDir := getEnvironmentVar("htmlDir");
+genIcons:= getEnvironmentVar("genIcons")=="true";
 
 setModelicaPath(rootDir);
 "Load MSL";
@@ -72,9 +73,9 @@ genBuiltin := false;
 // Defining and creating the output directory for html files:
 MSLdir := dirname(OpenModelica.Scripting.getSourceFile(Modelica));
 // Define where the HTML files should go:
-targetDir := MSLdir+"/Resources/help/";
+targetDir := MSLdir+htmlDir;
 // Create the target directory:
-system("mkdir -p \""+targetDir+"\"");
+OpenModelica.Scripting.system("mkdir -p \""+targetDir+"\"");
 // Define the relative path to the root directory depending on MSL release or web version
 MSLrelease := true;
 if MSLrelease then
@@ -87,21 +88,23 @@ getErrorString();
 
 echo(false);
 //self:=getInstallationDirectoryPath() + "/share/doc/omc/testmodels/GenerateDoc.mos";getErrorString();
-if genIcons=="true" then
-  system("rm -rf Icons");getErrorString();
+if genIcons then
+  OpenModelica.Scripting.system("rm -rf Icons");getErrorString();
+  profile:=" -m cProfile -o generate_icons_profile.out ";
   py:=getInstallationDirectoryPath() + "/share/doc/omc/testmodels/generate_icons.py";getErrorString();
-  commands:={"(ulimit -t 10000 ; python "+py+" --quiet --output-dir "+outDir+"/Icons "+typeNameString(cl)+" )" for cl in getClassNames(builtin=false)};getErrorString();
-  res:=system_parallel(commands);getErrorString();
-  system("rm -f *.json");getErrorString();
+  commands:={"(ulimit -t 10000 ; python "+profile+py+" --quiet --output-dir "+outDir+"/Icons "+typeNameString(cl)+" )" for cl in getClassNames(builtin=false)};getErrorString();
+  res:=OpenModelica.Scripting.system_parallel(commands);getErrorString();
+  OpenModelica.Scripting.system("rm -f *.json");getErrorString();
+  OpenModelica.Scripting.system("mv '"+outDir+"/Icons' '"+targetDir+"'");getErrorString();
 end if;
 /* if max(res) <> 0 then
   exit(1);
 end if; */
 
 allClassNames:=getClassNames(builtin=genBuiltin,recursive=true,sort=true);
-system("date -u +%FT%TZ > tmp");
+OpenModelica.Scripting.system("date -u +%FT%TZ > tmp");
 genTimeStamp := readFile("tmp");
-version := "<hr />Generated at " + genTimeStamp +  " by <a href=\"http://openmodelica.org\">OpenModelica</a>" + getVersion();
+version := "<hr />Generated at " + genTimeStamp +  " by <a href=\"http://openmodelica.org\"> "+getVersion()+"</a>";
 
 echo(shouldEcho);
 "classNames";
@@ -455,7 +458,7 @@ writeFile("Documentation.html","<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.0 Tra
 <html>
 <head>
 <title>Redirect to Modelica Documentation</title>
-<meta http-equiv=\"REFRESH\" content=\"0;url=Modelica%20"+relVer+"/Resources/help/index.html\"></head>
+<meta http-equiv=\"REFRESH\" content=\"0;url=Modelica%20"+relVer+"/Resources/helpOM/index.html\"></head>
 <body>
 You are getting redirected to the HTML documentation of the Modelica Standard Library.
 </body>
@@ -469,6 +472,8 @@ writeFile("fix-case-sensitive.py","#!/usr/bin/env python
 import os
 import glob
 from subprocess import call
+
+os.chdir('"+targetDir+"') # work on target dir files
 
 def getFiles():
   files = [f for f in glob.glob('*.html') if os.path.isfile(f)]
@@ -491,7 +496,7 @@ def makeCaseSensitive():
       print('Renaming file %s to %s' % (file,nfile))
       if os.path.isfile(nfile):
         raise Exception('File already exists: ' + nfile)
-      call(['sed','-i','s/%s/%s/' % (file,nfile)] + files)
+      call(['sed','-i','s/%s/%s/g' % (file,nfile)] + files)
       os.rename(file,nfile)
       return False
     visited[upper] = file
@@ -505,36 +510,38 @@ while not makeCaseSensitive():
 echo(shouldEcho);
 
 "Removing previous generation output files...";
-system("rm -f tidy.out tidy.err tidy.filtered");
+OpenModelica.Scripting.system("rm -f tidy.out tidy.err tidy.filtered");
 
 "Copying original HTML files to 'old-html-tmp'";
-system("mkdir -p old-html-tmp");
-system("cp \""+targetDir+"\"*.html old-html-tmp/");
-system("rm -f Icons/*.json");
+OpenModelica.Scripting.system("mkdir -p old-html-tmp");
+OpenModelica.Scripting.system("cp \""+targetDir+"\"*.html old-html-tmp/");
+/*
+OpenModelica.Scripting.system("rm -f Icons/*.json");
 if rmSymlinks then
-  system("for symlink in `find -type l`; do rm $symlink;  done");
+  OpenModelica.Scripting.system("for symlink in `find -type l`; do rm $symlink;  done");
 end if;
-system("cp Icons \""+targetDir+"\"");
+OpenModelica.Scripting.system("cp Icons \""+targetDir+"\"");
+*/
 
 // "Copying generation script to the help directory";
-// system("cp genDocOMC.mos \""+targetDir+"\"");
+// OpenModelica.Scripting.system("cp genDocOMC.mos \""+targetDir+"\"");
 
 "Copying HTML start page to root directory";
-system("cp Documentation.html \""+rootDir+"\"/");
+OpenModelica.Scripting.system("cp Documentation.html \""+rootDir+"\"/");
 
 "Tidy.py";
-system("python Tidy.py 2> tidy.err");
+OpenModelica.Scripting.system("python Tidy.py 2> tidy.err");
 
 // Make zip (case-insensitive)
-system("python ./fix-case-sensitive.py");
+OpenModelica.Scripting.system("python ./fix-case-sensitive.py");
 
 "FilterTidy.sh";
-system("bash FilterTidy.sh");
+OpenModelica.Scripting.system("bash FilterTidy.sh");
 
-//system("rm -f ModelicaDocumentation.tar.xz");
-//system("mkdir -p " + dirs);
+//OpenModelica.Scripting.system("rm -f ModelicaDocumentation.tar.xz");
+//OpenModelica.Scripting.system("mkdir -p " + dirs);
 //"tar";
 //dirs;
 //cmd := "tar cJf ModelicaDocumentation.tar.xz --dereference style.css *.html " + dirs + " genDocOMC.mos FindFiles.log tidy.log";
-//system(cmd);
+//OpenModelica.Scripting.system(cmd);
 getErrorString();

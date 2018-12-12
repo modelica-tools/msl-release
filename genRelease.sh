@@ -17,6 +17,8 @@ releaseDir="Modelica_${tag:1}"
 export releaseVersion="`echo ${tag:1} |cut -d+ -f1`"
 export MODELICAPATH="/tmp/MSLrelease/$releaseDir"
 export outDir="$currDir/out"
+# relative sub folder for the HTML files:
+export htmlDir="/Resources/helpOM/"
 # Clean up of previous script runs
 rm -rf "/tmp/MSLrelease"
 
@@ -46,16 +48,11 @@ else
     echo "Running without HTML generation"
 fi
 
-# Copy the Icons dir to zip source
-if [ "$genIcons" = "true" ]; then
-    cp -r "$outDir/Icons" "$MODELICAPATH/Modelica $releaseVersion/Resources/help/"
-fi
-
 # Remove stuff that should not be part of the release:
 cd "$MODELICAPATH"
 rm -rf "$MODELICAPATH/ModelicaTest"
 rm -rf "$MODELICAPATH/ModelicaTestOverdetermined.mo"
-rm -rf "$MODELICAPATH/Modelica $releaseVersion/Resources/help/MissingFiles.log"
+mv "$MODELICAPATH/Modelica ${releaseVersion}${htmlDir}MissingFiles.log" $outDir
 
 # Create the release zip file
 echo "Generating the zip file..."
