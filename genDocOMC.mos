@@ -36,6 +36,7 @@ shouldEcho := true;
 echo(shouldEcho);
 
 setDebugFlags("nogen"); /* Don't generate dll/so-files when instantiating classes (performance) */
+setCommandLineOptions("--noSimplify");
 
 /* Some variables need to be provided as env variabels,e.g.,:
  *  $ export MODELICAPATH="/path/to/library/root/dir"
@@ -61,8 +62,7 @@ loadModel(ObsoleteModelica3);
 
 getErrorString();
 getClassNames();
-
-/* Customisation */
+getErrorString();
 
 // rmSymlinks
 // (false) should we keep readable names (nice online, if the server handles symbolic links), or
@@ -70,9 +70,9 @@ getClassNames();
 rmSymlinks := true;
 // should we generate documentation for OM built-in functions?
 genBuiltin := false;
-// Defining and creating the output directory for html files:
+"Defining and creating the output directory for html files:";
 MSLdir := dirname(OpenModelica.Scripting.getSourceFile(Modelica));
-// Define where the HTML files should go:
+"Define where the HTML files should go:";
 targetDir := MSLdir+htmlDir;
 // Create the target directory:
 OpenModelica.Scripting.system("mkdir -p \""+targetDir+"\"");
@@ -84,22 +84,17 @@ if MSLrelease then
   relativeRootDir := "../";
 end if;
 
-getErrorString();
-
 echo(false);
 //self:=getInstallationDirectoryPath() + "/share/doc/omc/testmodels/GenerateDoc.mos";getErrorString();
 if genIcons then
-  OpenModelica.Scripting.system("rm -rf Icons");getErrorString();
+  OpenModelica.Scripting.system("rm -rf "+outDir+"/Icons");getErrorString();
   profile:=" -m cProfile -o generate_icons_profile.out ";
   py:=getInstallationDirectoryPath() + "/share/doc/omc/testmodels/generate_icons.py";getErrorString();
-  commands:={"(ulimit -t 10000 ; python "+profile+py+" --quiet --output-dir "+outDir+"/Icons "+typeNameString(cl)+" )" for cl in getClassNames(builtin=false)};getErrorString();
+  commands:={"python "+profile+py+" --quiet --output-dir "+outDir+"/Icons "+typeNameString(cl) for cl in getClassNames(builtin=false)};getErrorString();
   res:=OpenModelica.Scripting.system_parallel(commands);getErrorString();
   OpenModelica.Scripting.system("rm -f *.json");getErrorString();
-  OpenModelica.Scripting.system("mv '"+outDir+"/Icons' '"+targetDir+"'");getErrorString();
+  OpenModelica.Scripting.system("cp -r '"+outDir+"/Icons' '"+targetDir+"'");getErrorString();
 end if;
-/* if max(res) <> 0 then
-  exit(1);
-end if; */
 
 allClassNames:=getClassNames(builtin=genBuiltin,recursive=true,sort=true);
 OpenModelica.Scripting.system("date -u +%FT%TZ > tmp");
@@ -134,11 +129,6 @@ algorithm
   uri := OpenModelica.Scripting.stringReplace(uri,\"<\",\"x3C\");
   uri := OpenModelica.Scripting.stringReplace(uri,\">\",\"x3E\");
 end uriEncode;
-
-function notLast
-  input String str[:];
-  output String ostr[:] = str[1:end];
-end notLast;
 
 function last
   input String str[:];
@@ -202,7 +192,7 @@ protected
 algorithm
   docInfo := if item.docInfo[1] == \"\"
     then preSuffixIfNotEmpty(\"<h2><a name=\\\"info\\\">Information</a></h2><pre>\", item.comment, \"</pre>\")
-    else if OpenModelica.Scripting.regexBool(item.docInfo[1],\"<html>\") or OpenModelica.Scripting.regexBool(item.docInfo[1],\"<HTML>\")
+    else if OpenModelica.Scripting.regexBool(item.docInfo[1],\"<html>\", caseInsensitive=true)
     then \"<h2><a name=\\\"info\\\">Information</a></h2>\" + item.docInfo[1]
     else preSuffixIfNotEmpty(\"<h2><a name=\\\"info\\\">Information</a></h2><pre>\", toHtml(item.docInfo[1]), \"</pre>\");
   revision := if item.docInfo[2] <> \"\" then \"<h2><a name=\\\"revisions\\\">Revisions</a></h2>\" + item.docInfo[2] else \"\";
@@ -369,7 +359,7 @@ for filepath in sorted(glob.glob('"+targetDir+"*.html')):
 #  sys.stdout.write(tag)  # not much point in writing the tags to stdout
   sys.stderr.write(tag)
   pid = sub.call(['tidy', '-utf8', '-modify', '-asxhtml', '--add-xml-decl', 'yes', '-quiet', filepath])
-  if pid <> 2:
+  if pid != 2:
     with open(filepath,'r') as html_file:
       soup = BeautifulSoup(html_file)
       for a in soup.findAll('a'):
@@ -469,42 +459,51 @@ writeFile("fix-case-sensitive.py","#!/usr/bin/env python
 # Finds files *.html that have the same case-insensitive names and renames one or more of them
 # Example: Ab.html AB.html ab.html becomes: Ab.1.html ab.2.html AB.html
 
-import os
 import glob
-from subprocess import call
-
-os.chdir('"+targetDir+"') # work on target dir files
+import os
+import re
 
 def getFiles():
-  files = [f for f in glob.glob('*.html') if os.path.isfile(f)]
-  files.sort()
+  files = sorted([f for f in glob.glob('*.html') if os.path.isfile(f)], key=str.lower)
   return files
+
+def update(subst):
+  for file in glob.glob('*.html'):
+    if os.path.isfile(file):
+      with open (file, 'r' ) as f: orig = f.read()
+      patched = orig
+      for s in subst.items():
+        patched = re.sub('\\\\b'+s[0],s[1],patched)
+      if patched is not orig:
+        with open (file, 'w' ) as f: f.write(patched)
+  return
 
 def makeCaseSensitive():
   files = getFiles()
-  visited = {}
+  last = ''
+  idx = 0
+  repls = {}
   for file in files:
     upper = file.upper()
-    if upper in visited:
-      nfile = file.split('.')
-      # Add a .1, .2, .3, etc to the name, before the .html
-      try:
-        nfile[-2] = str(int(nfile[-2]) + 1)
-      except:
-        nfile.insert(len(nfile)-1,'1')
-      nfile = '.'.join(nfile)
-      print('Renaming file %s to %s' % (file,nfile))
-      if os.path.isfile(nfile):
-        raise Exception('File already exists: ' + nfile)
-      call(['sed','-i','s/%s/%s/g' % (file,nfile)] + files)
-      os.rename(file,nfile)
-      return False
-    visited[upper] = file
-  return True
+    if upper == last:
+      while True:
+        idx += 1
+        nfile = file.split('.')
+        nfile.insert(len(nfile)-1,str(idx))
+        nfile = '.'.join(nfile)
+        if not os.path.isfile(nfile):
+          print('Renaming file %s to %s' % (file,nfile))
+          repls[file] = nfile
+          os.rename(file, nfile)
+          break
+    else:
+      idx = 0
+    last = upper
+  return repls
 
 print('Running Python script: makeCaseSensitive')
-while not makeCaseSensitive():
-  pass
+repls = makeCaseSensitive()
+update(repls)
 ");
 
 echo(shouldEcho);
@@ -515,16 +514,6 @@ OpenModelica.Scripting.system("rm -f tidy.out tidy.err tidy.filtered");
 "Copying original HTML files to 'old-html-tmp'";
 OpenModelica.Scripting.system("mkdir -p old-html-tmp");
 OpenModelica.Scripting.system("cp \""+targetDir+"\"*.html old-html-tmp/");
-/*
-OpenModelica.Scripting.system("rm -f Icons/*.json");
-if rmSymlinks then
-  OpenModelica.Scripting.system("for symlink in `find -type l`; do rm $symlink;  done");
-end if;
-OpenModelica.Scripting.system("cp Icons \""+targetDir+"\"");
-*/
-
-// "Copying generation script to the help directory";
-// OpenModelica.Scripting.system("cp genDocOMC.mos \""+targetDir+"\"");
 
 "Copying HTML start page to root directory";
 OpenModelica.Scripting.system("cp Documentation.html \""+rootDir+"\"/");
@@ -537,6 +526,11 @@ OpenModelica.Scripting.system("python ./fix-case-sensitive.py");
 
 "FilterTidy.sh";
 OpenModelica.Scripting.system("bash FilterTidy.sh");
+
+"Remove symlinks if rmSymlinks=true";
+if rmSymlinks then
+    OpenModelica.Scripting.system("for symlink in `find "+targetdir+" -type l`; do rm $symlink;  done");
+end if;
 
 //OpenModelica.Scripting.system("rm -f ModelicaDocumentation.tar.xz");
 //OpenModelica.Scripting.system("mkdir -p " + dirs);
