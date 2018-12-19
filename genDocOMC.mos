@@ -314,7 +314,7 @@ writeFile(filetmp, "</body>\n</html>", append = true);
 
 writeFile("Tidy.py","#!/usr/bin/env python
 # -*- coding: utf-8 -*-
-from BeautifulSoup import BeautifulSoup
+from bs4 import BeautifulSoup
 import subprocess as sub
 import re
 import glob
@@ -351,7 +351,7 @@ def check_local_files(uri, tag):
       filename = uri.split('#', 1)[0]
       if not os.path.exists(filename):
         log_msg = tag+'Not found: %s\\n' % uri
-	sys.stdout.write(log_msg)
+        sys.stdout.write(log_msg)
         log_file.write(log_msg) # lets also record that in the log file
 
 for filepath in sorted(glob.glob('"+targetDir+"*.html')):
@@ -361,11 +361,11 @@ for filepath in sorted(glob.glob('"+targetDir+"*.html')):
   pid = sub.call(['tidy', '-utf8', '-modify', '-asxhtml', '--add-xml-decl', 'yes', '-quiet', filepath])
   if pid != 2:
     with open(filepath,'r') as html_file:
-      soup = BeautifulSoup(html_file)
+      soup = BeautifulSoup(html_file, 'html_parser')
       for a in soup.findAll('a'):
         try:
           a['href'] = linkreplace(a['href'])
-	  check_local_files(a['href'], tag)
+          check_local_files(a['href'], tag)
         except:
           pass
       for a in soup.findAll('link'):
@@ -376,7 +376,7 @@ for filepath in sorted(glob.glob('"+targetDir+"*.html')):
       for img in soup.findAll('img'):
         try:
           img['src'] = linkreplace(img['src'])
-	  check_local_files(img['src'], tag)
+          check_local_files(img['src'], tag)
         except:
           pass
     with open(filepath,'w') as html_file:
@@ -529,7 +529,7 @@ OpenModelica.Scripting.system("bash FilterTidy.sh");
 
 "Remove symlinks if rmSymlinks=true";
 if rmSymlinks then
-    OpenModelica.Scripting.system("for symlink in `find "+targetdir+" -type l`; do rm $symlink;  done");
+    OpenModelica.Scripting.system("for symlink in `find '"+targetDir+"' -type l`; do rm $symlink;  done");
 end if;
 
 //OpenModelica.Scripting.system("rm -f ModelicaDocumentation.tar.xz");
