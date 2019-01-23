@@ -87,10 +87,10 @@ end if;
 echo(false);
 //self:=getInstallationDirectoryPath() + "/share/doc/omc/testmodels/GenerateDoc.mos";getErrorString();
 if genIcons then
-  OpenModelica.Scripting.system("rm -rf "+outDir+"/Icons");getErrorString();
+  OpenModelica.Scripting.system("rm -rf \""+outDir+"/Icons\"");getErrorString();
   profile:=" -m cProfile -o generate_icons_profile.out ";
   py:=getInstallationDirectoryPath() + "/share/doc/omc/testmodels/generate_icons.py";getErrorString();
-  commands:={"python "+profile+py+" --quiet --output-dir "+outDir+"/Icons "+typeNameString(cl) for cl in getClassNames(builtin=false)};getErrorString();
+  commands:={"python "+profile+py+" --quiet --output-dir \""+outDir+"/Icons\" "+typeNameString(cl) for cl in getClassNames(builtin=false)};getErrorString();
   res:=OpenModelica.Scripting.system_parallel(commands);getErrorString();
   OpenModelica.Scripting.system("rm -f *.json");getErrorString();
   OpenModelica.Scripting.system("cp -r '"+outDir+"/Icons' '"+targetDir+"'");getErrorString();
@@ -529,7 +529,7 @@ OpenModelica.Scripting.system("bash FilterTidy.sh");
 
 "Remove symlinks if rmSymlinks=true";
 if rmSymlinks then
-    OpenModelica.Scripting.system("for symlink in `find '"+targetDir+"' -type l`; do rm $symlink;  done");
+    OpenModelica.Scripting.system("find \""+targetDir+"\" -type l -delete");
 end if;
 
 //OpenModelica.Scripting.system("rm -f ModelicaDocumentation.tar.xz");

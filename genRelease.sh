@@ -52,7 +52,7 @@ fi
 cd "$MODELICAPATH"
 rm -rf "$MODELICAPATH/ModelicaTest"
 rm -rf "$MODELICAPATH/ModelicaTestOverdetermined.mo"
-mv "$MODELICAPATH/Modelica ${releaseVersion}${htmlDir}MissingFiles.log" $outDir
+mv "$MODELICAPATH/Modelica ${releaseVersion}${htmlDir}MissingFiles.log" "$outDir"
 
 # Create the release zip file
 echo "Generating the zip file..."
