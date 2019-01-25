@@ -464,7 +464,7 @@ import os
 import re
 
 def getFiles():
-  files = sorted([f for f in glob.glob('*.html') if os.path.isfile(f)], key=str.lower)
+  files = sorted([f for f in glob.glob('"+targetDir+"*.html') if os.path.isfile(f)], key=str.lower)
   return files
 
 def update(subst):
