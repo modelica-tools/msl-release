@@ -54,7 +54,7 @@ rm -rf "$MODELICAPATH/ModelicaTest"
 rm -rf "$MODELICAPATH/ModelicaTestOverdetermined.mo"
 mv "$MODELICAPATH/Modelica ${releaseVersion}${htmlDir}MissingFiles.log" "$outDir"
 # Fix the README.md to work in the release zip
-sed -e "s#Modelica/Resources#Modelica ${releaseVersion}/Resources#" -i "$MODELICAPATH/README.md"
+sed -e "s#Modelica/Resources#Modelica%20${releaseVersion}/Resources#" -i "$MODELICAPATH/README.md"
 
 # Create the release zip file
 echo "Generating the zip file..."
