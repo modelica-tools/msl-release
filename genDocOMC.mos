@@ -93,8 +93,8 @@ if genIcons then
   commands:={"python "+profile+py+" --quiet --output-dir \""+outDir+"/Icons\" "+typeNameString(cl) for cl in getClassNames(builtin=false)};getErrorString();
   res:=OpenModelica.Scripting.system_parallel(commands);getErrorString();
   OpenModelica.Scripting.system("rm -f *.json");getErrorString();
-  OpenModelica.Scripting.system("cp -r '"+outDir+"/Icons' '"+targetDir+"'");getErrorString();
 end if;
+OpenModelica.Scripting.system("cp -r '"+outDir+"/Icons' '"+targetDir+"'");getErrorString();
 
 allClassNames:=getClassNames(builtin=genBuiltin,recursive=true,sort=true);
 OpenModelica.Scripting.system("date -u +%FT%TZ > tmp");
