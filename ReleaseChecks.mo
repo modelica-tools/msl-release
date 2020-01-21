@@ -36,11 +36,12 @@ package ReleaseChecks
     extends Modelica.Icons.Function;
 
     input String s = "Modelica" "Package name";
-    output Integer nr[5] = zeros(5) "Number of {models, blocks, functions, types, packages}";
+    output Integer nr[6] = zeros(6) "Number of {models, blocks, functions, types, packages, examples}";
   protected
     String localClasses[:] = ModelManagement.Structure.AST.ClassesInPackage(s);
     ModelManagement.Structure.AST.ClassAttributes attributes;
     Boolean isInternal;
+    Boolean isExample;
 
   algorithm
     attributes := ModelManagement.Structure.AST.GetClassAttributes(s);
@@ -49,12 +50,17 @@ package ReleaseChecks
       for i in 1:size(localClasses, 1) loop
         attributes := ModelManagement.Structure.AST.GetClassAttributes(s + "." + localClasses[i]);
         isInternal := Internal.isInternalClass(s + "." + localClasses[i]) or Internal.isObsoleteClass(s + "." + localClasses[i]);
+        isExample := Internal.isExampleModel(s + "." + localClasses[i]);
         if attributes.isProtected or attributes.isPartial or isInternal then
         elseif attributes.restricted == "package" then
           nr := nr + countClassesInPackage(attributes.fullName);
           nr[5] := nr[5] + 1;
         elseif attributes.restricted == "model" then
-          nr[1] := nr[1] + 1;
+          if isExample then
+            nr[6] := nr[6] + 1;
+          else
+            nr[1] := nr[1] + 1;
+          end if;
         elseif attributes.restricted == "block" then
           nr[2] := nr[2] + 1;
         elseif attributes.restricted == "function" then
@@ -156,6 +162,27 @@ Generate HTML documentation from Modelica model or package in Dymola</html>"));
       end if;
     end isObsoleteClass;
 
+    function isExampleModel "Simple check if a class is an example model"
+      extends Modelica.Icons.Function;
+
+      input String s = "Modelica" "Class name";
+      output Boolean isExample "Example flag";
+    protected
+      String extendsClasses[:] = ModelManagement.Structure.AST.ExtendsInClass(s);
+      ModelManagement.Structure.AST.ClassAttributes attributes;
+    algorithm
+      isExample := false;
+      attributes := ModelManagement.Structure.AST.GetClassAttributes(s);
+      if attributes.restricted == "model" then
+        for i in 1:size(extendsClasses, 1) loop
+          if 0 < Modelica.Utilities.Strings.findLast(extendsClasses[i], "Example") then
+            isExample := true;
+            Modelica.Utilities.Streams.print(s);
+            break;
+          end if;
+        end for;
+      end if;
+    end isExampleModel;
   end Internal;
 
   model TestModel
