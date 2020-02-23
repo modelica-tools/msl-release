@@ -2,7 +2,7 @@ within ;
 package ReleaseChecks
   extends Modelica.Icons.Package;
 
-  function printExecutables
+  function printExecutables "Recursively translate blocks/models in pedantic mode"
     extends Modelica.Icons.Function;
     import Modelica.Utilities.Streams.print;
 
@@ -12,24 +12,23 @@ package ReleaseChecks
       "File name where successful translating model/block names shall be stored";
     input String fileNameFailed = "log_failed.txt"
       "File name where model/block names shall be stored that fail translation";
+  protected
+    String packageName;
   algorithm
     // Remove log files
     Modelica.Utilities.Files.removeFile(fileNameSuccessful);
     Modelica.Utilities.Files.removeFile(fileNameFailed);
 
     // Print heading
-    print("The following models/blocks with StopTime annotation translate successfully:\n",
-          fileNameSuccessful);
-    print("The following models/blocks with StopTime annotation fail translation if pedantic=true:\n",
-          fileNameFailed);
-
-    // Set Dymola pedantic mode
-    Advanced.PedanticModelica:=true;
+    print("The following models/blocks with StopTime annotation translate successfully:\n", fileNameSuccessful);
+    print("The following models/blocks with StopTime annotation fail translation if pedantic=true:\n", fileNameFailed);
 
     // Inspect packages
     for packageName in libraries loop
-        Internal.inspectPackage(packageName, fileNameSuccessful, fileNameFailed);
+      Internal.inspectPackage(packageName, fileNameSuccessful, fileNameFailed);
     end for;
+    annotation (Documentation(info="<html><p>
+Translate all executable (= having an <code>experiment.StopTime</code> annotation) blocks/models of the listed <code>libraries</code> in pedantic mode.</p></html>"));
   end printExecutables;
 
   function countClassesInPackage "Recursively count public, non-partial, non-internal and non-obsolete classes in package"
@@ -70,9 +69,9 @@ package ReleaseChecks
         end if;
       end for;
     end if;
-    annotation (Documentation(info="<html>
+    annotation (Documentation(info="<html><p>
 Modified version of <a href=\"modelica://ModelManagement.Structure.AST.Examples.countModelsInPackage\">
-countModelsInPackage</a> from ModelManagement library of Dymola</html>"));
+countModelsInPackage</a> from ModelManagement library of Dymola</p></html>"));
   end countClassesInPackage;
 
   function genDoc "Export HTML documentation"
@@ -82,46 +81,58 @@ countModelsInPackage</a> from ModelManagement library of Dymola</html>"));
     input String directory = Modelica.Utilities.Files.loadResource("modelica://" + name + "/Resources/help") "Directory of exported HTML files";
   algorithm
     exportHTMLDirectory(name, directory);
-    annotation (Documentation(info="<html>
-Generate HTML documentation from Modelica model or package in Dymola</html>"));
+    annotation (Documentation(info="<html><p>
+Generate HTML documentation from Modelica model or package in Dymola</p></html>"));
   end genDoc;
 
   package Internal
     extends Modelica.Icons.InternalPackage;
 
-    function inspectPackage
+    function inspectPackage "Check if all executable blocks/models of a package translate in pedantic mode"
       extends Modelica.Icons.Function;
 
       import Modelica.Utilities.Streams.print;
+      import Modelica.Utilities.Strings.isEmpty;
+      import Modelica.Utilities.Strings.findLast;
+      import ModelManagement.Structure.AST;
+
       input String packageName "Package to be inspected";
-      input String fileNameSuccessful = "log_successful.txt"
-        "File name where successful translating model/block names shall be stored";
-      input String fileNameFailed = "log_failed.txt"
-        "File name where model/block names shall be stored that fail translation";
+      input String fileNameSuccessful = "log_successful.txt" "File name where successful translating model/block names shall be stored";
+      input String fileNameFailed = "log_failed.txt" "File name where model/block names shall be stored that fail translation";
     protected
       String localClasses[:];
       String StopTime;
       Boolean OK;
+      String logStat;
+      AST.ClassAttributes classAttributes;
     algorithm
-      localClasses :=ModelManagement.Structure.AST.ClassesInPackage(packageName);
-      for name in localClasses loop
-         fullName :=packageName + "." + name;
-         classAttributes :=ModelManagement.Structure.AST.GetClassAttributes(fullName);
-         if classAttributes.restricted == "package" then
-            inspectPackage(fullName, fileNameSuccessful, fileNameFailed);
+      logStat := "";
 
-         elseif classAttributes.restricted == "model" or
-                classAttributes.restricted == "block" then
-            StopTime :=ModelManagement.Structure.AST.GetAnnotation(fullName, "experiment.StopTime");
-            if StopTime <> "" then
-               OK :=translateModel(fullName);
-               if OK then
-                  print(fullName, fileNameSuccessful);
-               else
-                  print(fullName, fileNameFailed);
-               end if;
+      // Set Dymola pedantic mode
+      Advanced.PedanticModelica := true;
+
+      localClasses := AST.ClassesInPackage(packageName);
+      for name in localClasses loop
+        fullName := packageName + "." + name;
+        classAttributes := AST.GetClassAttributes(fullName);
+        if classAttributes.restricted == "package" then
+          inspectPackage(fullName, fileNameSuccessful, fileNameFailed);
+
+        elseif classAttributes.restricted == "model" or classAttributes.restricted == "block" then
+          StopTime := AST.GetAnnotation(fullName, "experiment.StopTime");
+          if not isEmpty(StopTime) then
+            OK := translateModel(fullName);
+            if OK then
+              (logStat, , , ) := getLastError();
+              OK := findLast(logStat, "Error: ERRORS have been issued.") == 0;
             end if;
-         end if;
+            if OK then
+              print(fullName, fileNameSuccessful);
+            else
+              print(fullName, fileNameFailed);
+            end if;
+          end if;
+        end if;
       end for;
     end inspectPackage;
 
