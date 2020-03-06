@@ -140,7 +140,7 @@ Generate HTML documentation from Modelica model or package in Dymola</p></html>"
       String StopTime;
       Boolean OK;
       String logStat;
-	  String fullName;
+      String fullName;
       AST.ClassAttributes classAttributes;
     algorithm
       logStat := "";
@@ -171,7 +171,7 @@ Generate HTML documentation from Modelica model or package in Dymola</p></html>"
           end if;
         end if;
       end for;
-	  annotation(__Dymola_interactive=true);
+      annotation(__Dymola_interactive=true);
     end inspectPackage;
 
     function inspectPackageEx "Simulate all executables blocks/models of a package and generate simulation results"
@@ -312,6 +312,7 @@ Generate HTML documentation from Modelica model or package in Dymola</p></html>"
                   print(logStat, fullPathName(modelDirectory + "/translate_passed.log"));
                   Advanced.StoreProtectedVariables := true;
                   Advanced.EfficientMinorEvents := false;
+                  Advanced.PlaceDymolaSourceFirst := 2; // See https://github.com/modelica/ModelicaStandardLibrary/pull/3453
                   OK := experimentSetupOutput(textual=false, doublePrecision=true, states=true, derivatives=true, inputs=true, outputs=true, auxiliaries=true, equidistant=true, events=true, debug=false);
 
                   // Simulate model
@@ -356,7 +357,7 @@ Generate HTML documentation from Modelica model or package in Dymola</p></html>"
           end if;
         end if;
       end for;
-	  annotation(__Dymola_interactive=true);
+      annotation(__Dymola_interactive=true);
     end inspectPackageEx;
 
     function scanReal "Scan Real value from string"
@@ -460,6 +461,7 @@ Generate HTML documentation from Modelica model or package in Dymola</p></html>"
       s := s + "translateModel(\"" + modelName + "\");\n";
       s := s + "Advanced.StoreProtectedVariables := true;\n";
       s := s + "Advanced.EfficientMinorEvents := false;\n";
+      s := s + "Advanced.PlaceDymolaSourceFirst := 2;\n";
       s := s + "experimentSetupOutput(\n";
       s := s + "  textual=false,\n";
       s := s + "  doublePrecision=true,\n";
