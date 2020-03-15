@@ -38,14 +38,17 @@ Translate all executable (= having an <code>experiment.StopTime</code> annotatio
     import Modelica.Utilities.Streams.print;
 
     input String libraries[:] = {"Modelica", "ModelicaTest"} "Libraries that shall be inspected";
+    input String directories[size(libraries, 1)] = {"modelica://Modelica/Resources/Reference", "modelica://ModelicaTest/Resources/Reference"}
+      "Directory structure containing the comparisonSignals.txt files and that also will be used as for the simulation outputs";
     input Boolean incrementalRun = true "= true, if only the failed models/blocks from a previous run are simulated, otherwise run all models/blocks";
     input Boolean keepResultFile = false "= true, if the MAT file containing the simulation result data is to be kept";
     input Integer numberOfIntervals = 5000 "Number of output points";
     input Real tolerance = 1e-6 "Solver tolerance";
     input String compiler = "vs" "Compiler type, for example, \"vs\"";
     input String compilerSettings[:] = {"MSVCDir=c:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Auxiliary/Build"} "Compiler settings in name=value pairs";
-    input String gitURL = "" "Run command \"git config --get remote.origin.url\"";
+    input String gitURL = "https://github.com/modelica/ModelicaStandardLibrary.git" "Run command \"git config --get remote.origin.url\"";
     input String gitRevision = "" "Run command \"git rev-parse --short HEAD\"";
+    input String gitStatus = "" "Run command \"git status --porcelain --untracked-files=no\" and pass as comma separated changes";
     input String description = "Reg test MSL v4.0.0-beta.1" "Description";
 
   protected
@@ -58,13 +61,14 @@ Translate all executable (= having an <code>experiment.StopTime</code> annotatio
   algorithm
 
     // Inspect packages
-    for packageName in libraries loop
-      directory := loadResource("modelica://" + packageName + "/Resources/Reference");
-      nr := Internal.inspectPackageEx(packageName, directory, incrementalRun, keepResultFile, numberOfIntervals, tolerance, compiler, compilerSettings, osver, hostname, user, description, gitURL, gitRevision);
+    for i in 1:size(libraries, 1) loop
+      packageName = libraries[i];
+      directory := loadResource(directories[i]);
+      nr := Internal.inspectPackageEx(packageName, directory, incrementalRun, keepResultFile, numberOfIntervals, tolerance, compiler, compilerSettings, osver, hostname, user, description, gitURL, gitRevision, gitStatus);
       print("Result for package \"" + packageName + "\": " + String(nr[1]) + " failed checks, " + String(nr[2]) + " failed translations, " + String(nr[3]) + " failed simulations");
     end for;
     annotation (__Dymola_interactive=true, Documentation(info="<html><p>
-Simulate all executable (= having an <code>experiment.StopTime</code> annotation) blocks/models of the listed <code>libraries</code> and generate CSV for the simulation data.</p></html>"));
+Simulate all executable (= having an <code>experiment.StopTime</code> annotation) blocks/models of the listed <code>libraries</code> and generate CSV for the simulation data according to the provided comparisonSignals.txt files.</p></html>"));
   end simulateExecutables;
 
   function countClassesInPackage "Recursively count public, non-partial, non-internal and non-obsolete classes in package"
@@ -203,6 +207,7 @@ Generate HTML documentation from Modelica model or package in Dymola</p></html>"
       input String description "Description";
       input String gitURL "Run command \"git config --get remote.origin.url\"";
       input String gitRevision "Run command \"git rev-parse --short HEAD\"";
+      input String gitStatus = "" "Run command \"git status --porcelain --untracked-files=no\"";
       output Integer nr[3] = zeros(3) "Number of failed {checks, translations, simulations}";
     protected
       String localClasses[:];
@@ -251,11 +256,15 @@ Generate HTML documentation from Modelica model or package in Dymola</p></html>"
       isDefaultInterval := false;
       isDefaultTolerance := false;
       usedTolerance := tolerance;
+
+      // Set Dymola non-pedantic mode
+      Advanced.PedanticModelica := false;
+
       for name in localClasses loop
         fullName := packageName + "." + name;
         classAttributes := AST.GetClassAttributes(fullName);
         if classAttributes.restricted == "package" then
-          nr := nr + inspectPackageEx(fullName, directory, incrementalRun, keepResultFile, numberOfIntervals, tolerance, compiler, compilerSettings, osver, hostname, user, description, gitURL, gitRevision);
+          nr := nr + inspectPackageEx(fullName, directory, incrementalRun, keepResultFile, numberOfIntervals, tolerance, compiler, compilerSettings, osver, hostname, user, description, gitURL, gitRevision, gitStatus);
 
         elseif classAttributes.restricted == "model" or classAttributes.restricted == "block" then
           StopTime := AST.GetAnnotation(fullName, "experiment.StopTime");
@@ -296,7 +305,7 @@ Generate HTML documentation from Modelica model or package in Dymola</p></html>"
               removeFile(fullPathName(modelDirectory + "/" + name + ".mat"));
 
               // Write meta data
-              logStat = Internal.getCreation(name, fullName, startTime, stopTime, interval, usedTolerance, numberOfIntervals, isDefaultStartTime, isDefaultInterval, isDefaultTolerance, compiler, compilerSettings, osver, hostname, user, description, gitURL, gitRevision);
+              logStat = Internal.getCreation(name, fullName, startTime, stopTime, interval, usedTolerance, numberOfIntervals, isDefaultStartTime, isDefaultInterval, isDefaultTolerance, compiler, compilerSettings, osver, hostname, user, description, gitURL, gitRevision, gitStatus);
               print(logStat, fullPathName(modelDirectory + "/creation.txt"));
 
               // Check model
@@ -324,16 +333,18 @@ Generate HTML documentation from Modelica model or package in Dymola</p></html>"
                     MATFileName := name + ".mat";
                     CSVFileName := fullPathName(modelDirectory + "/" + name + ".csv");
                     n := readTrajectorySize(MATFileName);
-                    varNames := readFile(fullPathName(modelDirectory + "/comparisonSignals.txt"));
-                    if varNames[1] == "time" then
-                      varNames[1] := "Time";
+                    if exist(fullPathName(modelDirectory + "/comparisonSignals.txt")) then
+                      varNames := removeLineComments(readFile(fullPathName(modelDirectory + "/comparisonSignals.txt")));
+                      if varNames[1] == "time" then
+                        varNames[1] := "Time";
+                      end if;
+                      traj := readTrajectory(MATFileName, varNames, n);
+                      traj_transposed := transpose(traj);
+                      if varNames[1] == "Time" then
+                        varNames[1] := "time";
+                      end if;
+                      DataFiles.writeCSVmatrix(CSVFileName, varNames, traj_transposed, separator=",", quoteAllHeaders=true);
                     end if;
-                    traj := readTrajectory(MATFileName, varNames, n);
-                    traj_transposed := transpose(traj);
-                    if varNames[1] == "Time" then
-                      varNames[1] := "time";
-                    end if;
-                    DataFiles.writeCSVmatrix(CSVFileName, varNames, traj_transposed, separator=",", quoteAllHeaders=true);
 
                     // Move or remove MAT file
                     if keepResultFile then
@@ -395,6 +406,21 @@ Generate HTML documentation from Modelica model or package in Dymola</p></html>"
       end for;
     end command;
 
+    function removeLineComments "Remove commented strings from vector of strings"
+      input String x[:] "Input string vector";
+      input String lineComment = "//" "Line comment";
+      output String y[:] "Output string vector";
+    protected
+      Integer pos;
+    algorithm
+      for i in 1:size(x, 1) loop
+        pos := Modelica.Utilities.Strings.find(x[i], lineComment);
+        if pos == 0 then
+          y := cat(1, y, x[i:i]);
+        end if;
+      end for;
+    end removeLineComments;
+
     impure function getCreation "Return creation meta data"
       extends Modelica.Icons.Function;
       input String modelIdent = "" "Model indent";
@@ -415,14 +441,20 @@ Generate HTML documentation from Modelica model or package in Dymola</p></html>"
       input String description "Description";
       input String gitURL "Run command \"git config --get remote.origin.url\"";
       input String gitRevision "Run command \"git rev-parse --short HEAD\"";
+      input String gitStatus "Run command \"git status --porcelain --untracked-files=no\"";
       output String s "Creation meta data";
     algorithm
       s := "[ResultCreationLog]\nmodelName=\"" + modelName + "\"\n";
       s := s + "\n// Test info\n";
       s := s + "generationTool=\"" + DymolaVersion() + "\"\n";
       s := s + "generationDateAndTime=\"" + command("getdatetime +\"%Y-%m-%dT%TZ\"") + "\"\n";
-      s := s + "usedGitURL=\"" + gitURL + "\"\n";
-      s := s + "usedGitRevision=" + gitRevision + "\n";
+      s := s + "gitURL=\"" + gitURL + "\"\n";
+      s := s + "gitRevision=" + gitRevision + "\n";
+      if Modelica.Utilities.Strings.isEmpty(gitStatus) then
+        s := s + "gitStatus=\n";
+      else
+        s := s + "gitStatus=\"" + gitStatus + "\"\n";
+      end if;
       s := s + "testPC=\"" + hostname + "\"\n";
       s := s + "testOS=\"" + osver + "\"\n";
       s := s + "testUser=\"" + user + "\"\n";
@@ -451,6 +483,7 @@ Generate HTML documentation from Modelica model or package in Dymola</p></html>"
       end if;
       s := s + "\n// Experiment settings (tool specific)\n";
       s := s + "// The following lines can be used as mos-script in Dymola\n";
+      s := s + "Advanced.PedanticModelica := false;\n";
       s := s + "SetDymolaCompiler(\"" + compiler + "\", {\"";
       for i in 1:size(compilerSettings, 1) - 1 loop
         s := s + compilerSettings[i] + "\", \"";
