@@ -315,10 +315,21 @@ Generate HTML documentation from Modelica model or package in Dymola</p></html>"
                 print(logStat, fullPathName(modelDirectory + "/check_passed.log"));
 
                 // Translate model
+                // OK := translateModel(fullName);
+                // (logStat, , , ) := getLastError();
+                // Woraround for issue with getLastError not returning the complete translation log
+                Advanced.TranslationInCommandLog := true;
+                clearlog();
                 OK := translateModel(fullName);
-                (logStat, , , ) := getLastError();
                 if OK then
-                  print(logStat, fullPathName(modelDirectory + "/translate_passed.log"));
+                  logStat := fullPathName(modelDirectory + "/translate_passed.log");
+                else
+                  logStat := fullPathName(modelDirectory + "/translate_failed.log");
+                end if;
+                savelog(logStat);
+                Advanced.TranslationInCommandLog := false;
+                if OK then
+                  // print(logStat, fullPathName(modelDirectory + "/translate_passed.log"));
                   Advanced.StoreProtectedVariables := true;
                   Advanced.EfficientMinorEvents := false;
                   Advanced.PlaceDymolaSourceFirst := 2; // See https://github.com/modelica/ModelicaStandardLibrary/pull/3453
@@ -358,7 +369,7 @@ Generate HTML documentation from Modelica model or package in Dymola</p></html>"
                   end if;
                 else
                   nr[2] := nr[2] + 1;
-                  print(logStat, fullPathName(modelDirectory + "/translate_failed.log"));
+                  // print(logStat, fullPathName(modelDirectory + "/translate_failed.log"));
                 end if;
               else
                 nr[1] := nr[1] + 1;
