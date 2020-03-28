@@ -42,8 +42,9 @@ Translate all executable (= having an <code>experiment.StopTime</code> annotatio
       "Directory structure containing the comparisonSignals.txt files and that also will be used as for the simulation outputs";
     input Boolean incrementalRun = true "= true, if only the failed models/blocks from a previous run are simulated, otherwise run all models/blocks";
     input Boolean keepResultFile = false "= true, if the MAT file containing the simulation result data is to be kept";
-    input Integer numberOfIntervals = 5000 "Number of output points";
-    input Real tolerance = 1e-6 "Solver tolerance";
+    input Integer numberOfIntervals = 5000 "Default number of output points, if not specified in model/block";
+    input Real tolerance = 1e-6 "Default solver tolerance, if not specified in model/block";
+    input Boolean useTolerance = false "= true, if default tolerance is to be used, even if set differently in model/block";
     input String compiler = "vs" "Compiler type, for example, \"vs\"";
     input String compilerSettings[:] = {"MSVCDir=c:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Auxiliary/Build"} "Compiler settings in name=value pairs";
     input String gitURL = "https://github.com/modelica/ModelicaStandardLibrary.git" "Run command \"git config --get remote.origin.url\"";
@@ -64,7 +65,7 @@ Translate all executable (= having an <code>experiment.StopTime</code> annotatio
     for i in 1:size(libraries, 1) loop
       packageName = libraries[i];
       directory := loadResource(directories[i]);
-      nr := Internal.inspectPackageEx(packageName, directory, incrementalRun, keepResultFile, numberOfIntervals, tolerance, compiler, compilerSettings, osver, hostname, user, description, gitURL, gitRevision, gitStatus);
+      nr := Internal.inspectPackageEx(packageName, directory, incrementalRun, keepResultFile, numberOfIntervals, tolerance, useTolerance, compiler, compilerSettings, osver, hostname, user, description, gitURL, gitRevision, gitStatus);
       print("Result for package \"" + packageName + "\": " + String(nr[1]) + " failed checks, " + String(nr[2]) + " failed translations, " + String(nr[3]) + " failed simulations");
     end for;
     annotation (__Dymola_interactive=true, Documentation(info="<html><p>
@@ -128,12 +129,17 @@ Generate HTML documentation from Modelica model or package in Dymola</p></html>"
   package Internal
     extends Modelica.Icons.InternalPackage;
 
+    type Tolerance = enumeration(
+      Default "Default solver tolerance",
+      Model "Solver tolerance from model/block",
+      User "User-defined tolerance")
+      "Enumeration defining the tolerance settings";
+
     function inspectPackage "Check if all executable blocks/models of a package translate in pedantic mode"
       extends Modelica.Icons.Function;
 
       import Modelica.Utilities.Streams.print;
-      import Modelica.Utilities.Strings.isEmpty;
-      import Modelica.Utilities.Strings.findLast;
+      import Modelica.Utilities.Strings.{isEmpty, findLast};
       import ModelManagement.Structure.AST;
 
       input String packageName "Package to be inspected";
@@ -181,15 +187,9 @@ Generate HTML documentation from Modelica model or package in Dymola</p></html>"
     function inspectPackageEx "Simulate all executables blocks/models of a package and generate simulation results"
       extends Modelica.Icons.Function;
 
-      import Modelica.Utilities.Files.createDirectory;
-      import Modelica.Utilities.Files.exist;
-      import Modelica.Utilities.Files.fullPathName;
-      import Modelica.Utilities.Files.move;
-      import Modelica.Utilities.Files.removeFile;
-      import Modelica.Utilities.Streams.print;
-      import Modelica.Utilities.Streams.readFile;
-      import Modelica.Utilities.Strings.isEmpty;
-      import Modelica.Utilities.Strings.replace;
+      import Modelica.Utilities.Files.{createDirectory, exist, fullPathName, move, removeFile};
+      import Modelica.Utilities.Streams.{print, readFile};
+      import Modelica.Utilities.Strings.{isEmpty, replace};
       import Modelica.Utilities.System.getTime;
       import ModelManagement.Structure.AST;
 
@@ -197,8 +197,9 @@ Generate HTML documentation from Modelica model or package in Dymola</p></html>"
       input String directory "Directory structure containing the simulation data";
       input Boolean incrementalRun = true "= true, if only the failed models/blocks from a previous run are simulated, otherwise run all models/blocks";
       input Boolean keepResultFile = false "= true, if the MAT file containing the simulation result data is kept";
-      input Integer numberOfIntervals = 5000 "Number of output points";
-      input Real tolerance = 1e-6 "Solver tolerance";
+      input Integer numberOfIntervals = 5000 "Default number of output points, if not set in model/block";
+      input Real tolerance = 1e-6 "Default solver tolerance, if not set in model/block";
+      input Boolean useTolerance = false "= true, if default tolerance is to be used, even if set differently in model/block";
       input String compiler "Compiler type, for example, \"vs\"";
       input String compilerSettings[:] "Compiler settings in name=value pairs";
       input String osver "OS version information";
@@ -234,6 +235,7 @@ Generate HTML documentation from Modelica model or package in Dymola</p></html>"
       Boolean isDefaultTolerance;
       Integer sec, min, hour, day, mon, year;
       String timeString;
+      Internal.Tolerance toleranceKind;
       AST.ClassAttributes classAttributes;
     algorithm
       localClasses := AST.ClassesInPackage(packageName);
@@ -264,7 +266,7 @@ Generate HTML documentation from Modelica model or package in Dymola</p></html>"
         fullName := packageName + "." + name;
         classAttributes := AST.GetClassAttributes(fullName);
         if classAttributes.restricted == "package" then
-          nr := nr + inspectPackageEx(fullName, directory, incrementalRun, keepResultFile, numberOfIntervals, tolerance, compiler, compilerSettings, osver, hostname, user, description, gitURL, gitRevision, gitStatus);
+          nr := nr + inspectPackageEx(fullName, directory, incrementalRun, keepResultFile, numberOfIntervals, tolerance, useTolerance, compiler, compilerSettings, osver, hostname, user, description, gitURL, gitRevision, gitStatus);
 
         elseif classAttributes.restricted == "model" or classAttributes.restricted == "block" then
           StopTime := AST.GetAnnotation(fullName, "experiment.StopTime");
@@ -273,9 +275,16 @@ Generate HTML documentation from Modelica model or package in Dymola</p></html>"
             StartTime := AST.GetAnnotation(fullName, "experiment.StartTime");
             (isDefaultStartTime, startTime) := scanReal(StartTime, 0.0);
             Tolerance := AST.GetAnnotation(fullName, "experiment.Tolerance");
-            (isDefaultTolerance, usedTolerance) := scanReal(Tolerance, tolerance);
-            if not isDefaultTolerance and usedTolerance >= 2e-12 then
-              usedTolerance := usedTolerance * 0.1;
+            if useTolerance then
+              toleranceKind := Internal.Tolerance.User;
+              isDefaultTolerance := true;
+              usedTolerance := tolerance;
+            else
+              (isDefaultTolerance, usedTolerance) := scanReal(Tolerance, tolerance);
+              toleranceKind := if isDefaultTolerance then Internal.Tolerance.Default else Internal.Tolerance.Model;
+              if not isDefaultTolerance and usedTolerance >= 2e-12 then
+                usedTolerance := usedTolerance * 0.1;
+              end if;
             end if;
             Interval := AST.GetAnnotation(fullName, "experiment.Interval");
             (isDefaultInterval, interval) := scanReal(Interval, (stopTime - startTime)/numberOfIntervals);
@@ -305,7 +314,7 @@ Generate HTML documentation from Modelica model or package in Dymola</p></html>"
               removeFile(fullPathName(modelDirectory + "/" + name + ".mat"));
 
               // Write meta data
-              logStat = Internal.getCreation(name, fullName, startTime, stopTime, interval, usedTolerance, numberOfIntervals, isDefaultStartTime, isDefaultInterval, isDefaultTolerance, compiler, compilerSettings, osver, hostname, user, description, gitURL, gitRevision, gitStatus);
+              logStat = Internal.getCreation(name, fullName, startTime, stopTime, interval, usedTolerance, numberOfIntervals, isDefaultStartTime, isDefaultInterval, toleranceKind, compiler, compilerSettings, osver, hostname, user, description, gitURL, gitRevision, gitStatus);
               print(logStat, fullPathName(modelDirectory + "/creation.txt"));
 
               // Check model
@@ -443,7 +452,7 @@ Generate HTML documentation from Modelica model or package in Dymola</p></html>"
       input Integer numberOfIntervals "Number of intervals";
       input Boolean isDefaultStartTime "= true, if start time is the default start time";
       input Boolean isDefaultInterval "= true, if start time is the default interval";
-      input Boolean isDefaultTolerance "= true, if start time is the default solver tolerance";
+      input Tolerance toleranceKind "Specified solver tolerance setting";
       input String compiler "Compiler type, for example, \"vs\"";
       input String compilerSettings[:] "Compiler settings in name=value pairs";
       input String osver "OS version information";
@@ -487,10 +496,12 @@ Generate HTML documentation from Modelica model or package in Dymola</p></html>"
       s := s + "Tolerance=" + String(tolerance);
       if tolerance < 2e-12 then
         s := s + " // used annotation from model, because attempt with tolerance of " + String(0.1*tolerance) + "\n";
-      elseif isDefaultTolerance then
+      elseif toleranceKind == Tolerance.Default then
         s := s + " // used default, because no tolerance annotation in model\n";
-      else
+      elseif toleranceKind == Tolerance.Model then
         s := s + " // used annotation from model, multiplied by 0.1\n";
+      else
+        s := s + " // used user-defined value\n";
       end if;
       s := s + "\n// Experiment settings (tool specific)\n";
       s := s + "// The following lines can be used as mos-script in Dymola\n";
