@@ -63,7 +63,7 @@ Translate all executable (= having an <code>experiment.StopTime</code> annotatio
 
     // Inspect packages
     for i in 1:size(libraries, 1) loop
-      packageName = libraries[i];
+      packageName := libraries[i];
       directory := loadResource(directories[i]);
       nr := Internal.inspectPackageEx(packageName, directory, incrementalRun, keepResultFile, numberOfIntervals, tolerance, useTolerance, compiler, compilerSettings, osver, hostname, user, description, gitURL, gitRevision, gitStatus);
       print("Result for package \"" + packageName + "\": " + String(nr[1]) + " failed checks, " + String(nr[2]) + " failed translations, " + String(nr[3]) + " failed simulations");
@@ -78,17 +78,17 @@ Simulate all executable (= having an <code>experiment.StopTime</code> annotation
     input String s = "Modelica" "Package name";
     output Integer nr[6] = zeros(6) "Number of {models, blocks, functions, types, packages, examples}";
   protected
-    String localClasses[:] = ModelManagement.Structure.AST.ClassesInPackage(s);
-    ModelManagement.Structure.AST.ClassAttributes attributes;
+    String localClasses[:] = ModelManagement.Structure.AST.Misc.ClassesInPackage(s);
+    ModelManagement.Structure.AST.Classes.ClassAttributes attributes;
     Boolean isInternal;
     Boolean isExample;
 
   algorithm
-    attributes := ModelManagement.Structure.AST.GetClassAttributes(s);
+    attributes :=ModelManagement.Structure.AST.Classes.GetClassAttributes(s);
     isInternal := Internal.isInternalClass(s) or Internal.isObsoleteClass(s);
     if not attributes.isProtected and not attributes.isPartial and not isInternal then
       for i in 1:size(localClasses, 1) loop
-        attributes := ModelManagement.Structure.AST.GetClassAttributes(s + "." + localClasses[i]);
+        attributes :=ModelManagement.Structure.AST.Classes.GetClassAttributes(s + "." + localClasses[i]);
         isInternal := Internal.isInternalClass(s + "." + localClasses[i]) or Internal.isObsoleteClass(s + "." + localClasses[i]);
         isExample := Internal.isExampleModel(s + "." + localClasses[i]);
         if attributes.isProtected or attributes.isPartial or isInternal then
@@ -151,22 +151,22 @@ Generate HTML documentation from Modelica model or package in Dymola</p></html>"
       Boolean OK;
       String logStat;
       String fullName;
-      AST.ClassAttributes classAttributes;
+      AST.Classes.ClassAttributes classAttributes;
     algorithm
       logStat := "";
 
       // Set Dymola pedantic mode
       Advanced.PedanticModelica := true;
 
-      localClasses := AST.ClassesInPackage(packageName);
+      localClasses := AST.Misc.ClassesInPackage(packageName);
       for name in localClasses loop
         fullName := packageName + "." + name;
-        classAttributes := AST.GetClassAttributes(fullName);
+        classAttributes := AST.Classes.GetClassAttributes(fullName);
         if classAttributes.restricted == "package" then
           inspectPackage(fullName, fileNameSuccessful, fileNameFailed);
 
         elseif classAttributes.restricted == "model" or classAttributes.restricted == "block" then
-          StopTime := AST.GetAnnotation(fullName, "experiment.StopTime");
+          StopTime := AST.Classes.GetAnnotation(fullName, "experiment.StopTime");
           if not isEmpty(StopTime) then
             OK := translateModel(fullName);
             if OK then
@@ -236,9 +236,9 @@ Generate HTML documentation from Modelica model or package in Dymola</p></html>"
       Integer sec, min, hour, day, mon, year;
       String timeString;
       Internal.Tolerance toleranceKind;
-      AST.ClassAttributes classAttributes;
+      AST.Classes.ClassAttributes classAttributes;
     algorithm
-      localClasses := AST.ClassesInPackage(packageName);
+      localClasses := AST.Misc.ClassesInPackage(packageName);
       StartTime := "";
       StopTime := "";
       Tolerance := "";
@@ -264,17 +264,17 @@ Generate HTML documentation from Modelica model or package in Dymola</p></html>"
 
       for name in localClasses loop
         fullName := packageName + "." + name;
-        classAttributes := AST.GetClassAttributes(fullName);
+        classAttributes := AST.Classes.GetClassAttributes(fullName);
         if classAttributes.restricted == "package" then
           nr := nr + inspectPackageEx(fullName, directory, incrementalRun, keepResultFile, numberOfIntervals, tolerance, useTolerance, compiler, compilerSettings, osver, hostname, user, description, gitURL, gitRevision, gitStatus);
 
         elseif classAttributes.restricted == "model" or classAttributes.restricted == "block" then
-          StopTime := AST.GetAnnotation(fullName, "experiment.StopTime");
-          if not isEmpty(StopTime) then
+          StopTime := AST.Classes.GetAnnotation(fullName, "experiment.StopTime");
+          if not isEmpty(StopTime) /* and fullName == "ModelicaTest.Blocks.Limiters" */ then
             (, stopTime) := scanReal(StopTime, 1.0);
-            StartTime := AST.GetAnnotation(fullName, "experiment.StartTime");
+            StartTime := AST.Classes.GetAnnotation(fullName, "experiment.StartTime");
             (isDefaultStartTime, startTime) := scanReal(StartTime, 0.0);
-            Tolerance := AST.GetAnnotation(fullName, "experiment.Tolerance");
+            Tolerance := AST.Classes.GetAnnotation(fullName, "experiment.Tolerance");
             if useTolerance then
               toleranceKind := Internal.Tolerance.User;
               isDefaultTolerance := true;
@@ -286,7 +286,7 @@ Generate HTML documentation from Modelica model or package in Dymola</p></html>"
                 usedTolerance := usedTolerance * 0.1;
               end if;
             end if;
-            Interval := AST.GetAnnotation(fullName, "experiment.Interval");
+            Interval := AST.Classes.GetAnnotation(fullName, "experiment.Interval");
             (isDefaultInterval, interval) := scanReal(Interval, (stopTime - startTime)/numberOfIntervals);
             if not isDefaultInterval then
               interval := interval * 0.5;
@@ -314,7 +314,7 @@ Generate HTML documentation from Modelica model or package in Dymola</p></html>"
               removeFile(fullPathName(modelDirectory + "/" + name + ".mat"));
 
               // Write meta data
-              logStat = Internal.getCreation(name, fullName, startTime, stopTime, interval, usedTolerance, numberOfIntervals, isDefaultStartTime, isDefaultInterval, toleranceKind, compiler, compilerSettings, osver, hostname, user, description, gitURL, gitRevision, gitStatus);
+              logStat := Internal.getCreation(name, fullName, startTime, stopTime, interval, usedTolerance, numberOfIntervals, isDefaultStartTime, isDefaultInterval, toleranceKind, compiler, compilerSettings, osver, hostname, user, description, gitURL, gitRevision, gitStatus);
               print(logStat, fullPathName(modelDirectory + "/creation.txt"));
 
               // Check model
@@ -544,7 +544,7 @@ Generate HTML documentation from Modelica model or package in Dymola</p></html>"
       input String s = "Modelica" "Class name";
       output Boolean isInternal "Internal flag";
     protected
-      String extendsClasses[:] = ModelManagement.Structure.AST.ExtendsInClass(s);
+      String extendsClasses[:] = ModelManagement.Structure.AST.Classes.ExtendsInClass(s);
     algorithm
       isInternal := false;
       for i in 1:size(extendsClasses, 1) loop
@@ -561,8 +561,8 @@ Generate HTML documentation from Modelica model or package in Dymola</p></html>"
       input String s = "Modelica" "Class name";
       output Boolean isObsolete "Obsolete flag";
     protected
-      String obsoleteString = ModelManagement.Structure.AST.GetAnnotationString(s, "obsolete");
-      String extendsClasses[:] = ModelManagement.Structure.AST.ExtendsInClass(s);
+      String obsoleteString = ModelManagement.Structure.AST.Classes.GetAnnotationString(s, "obsolete");
+      String extendsClasses[:] = ModelManagement.Structure.AST.Classes.ExtendsInClass(s);
     algorithm
       isObsolete := not Modelica.Utilities.Strings.isEmpty(obsoleteString);
       if not isObsolete then
@@ -581,11 +581,11 @@ Generate HTML documentation from Modelica model or package in Dymola</p></html>"
       input String s = "Modelica" "Class name";
       output Boolean isExample "Example flag";
     protected
-      String extendsClasses[:] = ModelManagement.Structure.AST.ExtendsInClass(s);
-      ModelManagement.Structure.AST.ClassAttributes attributes;
+      String extendsClasses[:] = ModelManagement.Structure.AST.Classes.ExtendsInClass(s);
+      ModelManagement.Structure.AST.Classes.ClassAttributes attributes;
     algorithm
       isExample := false;
-      attributes := ModelManagement.Structure.AST.GetClassAttributes(s);
+      attributes :=ModelManagement.Structure.AST.Classes.GetClassAttributes(s);
       if attributes.restricted == "model" then
         for i in 1:size(extendsClasses, 1) loop
           if 0 < Modelica.Utilities.Strings.findLast(extendsClasses[i], "Example") then
@@ -603,5 +603,5 @@ Generate HTML documentation from Modelica model or package in Dymola</p></html>"
   equation
     der(x) = -x;
   end TestModel;
-  annotation (uses(DataFiles(version="1.0.5"), ModelManagement(version="1.1.8"), Modelica(version="3.2.3")));
+  annotation (uses(DataFiles(version="1.0.5"), ModelManagement(version="1.3"), Modelica(version="4.0.0")));
 end ReleaseChecks;
