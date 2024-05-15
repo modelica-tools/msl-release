@@ -55,7 +55,7 @@ Translate all executable (= having an <code>experiment.StopTime</code> annotatio
   protected
     String packageName;
     String directory "Directory structure containing the simulation data";
-    Integer nr[3] "Number of failed {checks, translations, simulations} per package";
+    Integer nr[4] "Number of failed {checks, translations, simulations, results} per package";
     String osver = Internal.command("ver") "OS version information";
     String hostname = Internal.command("hostname") "Host name";
     String user = Internal.command("echo %username%") "User name";
@@ -66,7 +66,7 @@ Translate all executable (= having an <code>experiment.StopTime</code> annotatio
       packageName := libraries[i];
       directory := loadResource(directories[i]);
       nr := Internal.inspectPackageEx(packageName, directory, incrementalRun, keepResultFile, numberOfIntervals, tolerance, useTolerance, compiler, compilerSettings, osver, hostname, user, description, gitURL, gitRevision, gitStatus);
-      print("Result for package \"" + packageName + "\": " + String(nr[1]) + " failed checks, " + String(nr[2]) + " failed translations, " + String(nr[3]) + " failed simulations");
+      print("Result for package \"" + packageName + "\": " + String(nr[1]) + " failed checks, " + String(nr[2]) + " failed translations, " + String(nr[3]) + " failed simulations, " + String(nr[4]) + " failed results");
     end for;
     annotation (__Dymola_interactive=true, Documentation(info="<html><p>
 Simulate all executable (= having an <code>experiment.StopTime</code> annotation) blocks/models of the listed <code>libraries</code> and generate CSV for the simulation data according to the provided comparisonSignals.txt files.</p></html>"));
@@ -190,7 +190,6 @@ Generate HTML documentation from Modelica model or package in Dymola</p></html>"
       import Modelica.Utilities.Files.{createDirectory, exist, fullPathName, move, removeFile};
       import Modelica.Utilities.Streams.{print, readFile};
       import Modelica.Utilities.Strings.{isEmpty, replace};
-      import Modelica.Utilities.System.getTime;
       import ModelManagement.Structure.AST;
 
       input String packageName "Package to be inspected";
@@ -209,7 +208,7 @@ Generate HTML documentation from Modelica model or package in Dymola</p></html>"
       input String gitURL "Run command \"git config --get remote.origin.url\"";
       input String gitRevision "Run command \"git rev-parse --short HEAD\"";
       input String gitStatus = "" "Run command \"git status --porcelain --untracked-files=no\"";
-      output Integer nr[3] = zeros(3) "Number of failed {checks, translations, simulations}";
+      output Integer nr[4] = zeros(4) "Number of failed {checks, translations, simulations, results}";
     protected
       String localClasses[:];
       String StartTime;
@@ -219,13 +218,8 @@ Generate HTML documentation from Modelica model or package in Dymola</p></html>"
       String modelDirectory;
       String logStat;
       String MATFileName;
-      String CSVFileName;
-      String varNames[:];
       String fullName;
       Boolean OK;
-      Integer n;
-      Real traj[:, :];
-      Real traj_transposed[:, :];
       Real startTime;
       Real stopTime;
       Real interval;
@@ -246,11 +240,6 @@ Generate HTML documentation from Modelica model or package in Dymola</p></html>"
       modelDirectory := "";
       logStat := "";
       MATFileName := "";
-      CSVFileName := "";
-      varNames := fill("", 0);
-      n := 0;
-      traj := fill(0, 0, 0);
-      traj_transposed := fill(0, 0, 0);
       startTime := 0;
       stopTime := 1;
       interval := 0;
@@ -267,7 +256,6 @@ Generate HTML documentation from Modelica model or package in Dymola</p></html>"
         classAttributes := AST.Classes.GetClassAttributes(fullName);
         if classAttributes.restricted == "package" then
           nr := nr + inspectPackageEx(fullName, directory, incrementalRun, keepResultFile, numberOfIntervals, tolerance, useTolerance, compiler, compilerSettings, osver, hostname, user, description, gitURL, gitRevision, gitStatus);
-
         elseif classAttributes.restricted == "model" or classAttributes.restricted == "block" then
           StopTime := AST.Classes.GetAnnotation(fullName, "experiment.StopTime");
           if not isEmpty(StopTime) /* and fullName == "ModelicaTest.Blocks.Limiters" */ then
@@ -294,7 +282,7 @@ Generate HTML documentation from Modelica model or package in Dymola</p></html>"
             modelDirectory := fullPathName(directory + "/" + replace(fullName, ".", "/"));
             createDirectory(modelDirectory);
 
-            if not incrementalRun or not exist(fullPathName(modelDirectory + "/check_passed.log")) or not exist(fullPathName(modelDirectory + "/translate_passed.log")) or not exist(fullPathName(modelDirectory + "/simulate_passed.log")) then
+            if not incrementalRun or not exist(fullPathName(modelDirectory + "/check_passed.log")) or not exist(fullPathName(modelDirectory + "/translate_passed.log")) or not exist(fullPathName(modelDirectory + "/simulate_passed.log")) or not exist(fullPathName(modelDirectory + "/" + name + ".csv")) then
               SetDymolaCompiler(compiler, compilerSettings);
               Evaluate := false;
               OutputCPUtime := false;
@@ -308,6 +296,8 @@ Generate HTML documentation from Modelica model or package in Dymola</p></html>"
               removeFile(fullPathName(modelDirectory + "/simulate_failed.log"));
               removeFile(fullPathName(modelDirectory + "/compare_passed.log"));
               removeFile(fullPathName(modelDirectory + "/compare_failed.log"));
+              removeFile(fullPathName(modelDirectory + "/result_passed.log"));
+              removeFile(fullPathName(modelDirectory + "/result_failed.log"));
               removeFile(fullPathName(modelDirectory + "/creation.txt"));
               // Remove simulation data
               removeFile(fullPathName(modelDirectory + "/" + name + ".csv"));
@@ -326,7 +316,7 @@ Generate HTML documentation from Modelica model or package in Dymola</p></html>"
                 // Translate model
                 // OK := translateModel(fullName);
                 // (logStat, , , ) := getLastError();
-                // Woraround for issue with getLastError not returning the complete translation log
+                // Workaround for issue with getLastError not returning the complete translation log
                 Advanced.TranslationInCommandLog := true;
                 clearlog();
                 OK := translateModel(fullName);
@@ -348,27 +338,16 @@ Generate HTML documentation from Modelica model or package in Dymola</p></html>"
                   OK := simulateModel(problem=fullName, startTime=startTime, stopTime=stopTime, tolerance=usedTolerance, method="Dassl", outputInterval=interval, resultFile=name);
                   if OK then
                     move("dslog.txt", fullPathName(modelDirectory + "/simulate_passed.log"));
-
-                    // Write result variables as CSV file
                     MATFileName := name + ".mat";
-                    CSVFileName := fullPathName(modelDirectory + "/" + name + ".csv");
-                    n := readTrajectorySize(MATFileName);
-                    if exist(fullPathName(modelDirectory + "/comparisonSignals.txt")) then
-                      varNames := removeLineComments(readFile(fullPathName(modelDirectory + "/comparisonSignals.txt")));
-                      if varNames[1] == "time" then
-                        varNames[1] := "Time";
-                      end if;
-                      traj := readTrajectory(MATFileName, varNames, n);
-                      traj_transposed := transpose(traj);
-                      if varNames[1] == "Time" then
-                        varNames[1] := "time";
-                      end if;
-                      DataFiles.writeCSVmatrix(CSVFileName, varNames, traj_transposed, separator=",", quoteAllHeaders=true);
+                    if writeResult(MATFileName, fullPathName(modelDirectory + "/" + name + ".csv"), fullPathName(modelDirectory + "/comparisonSignals.txt"), fullPathName(modelDirectory + "/result_failed.log")) then
+                      print("OK", fullPathName(modelDirectory + "/result_passed.log"));
+                    else
+                      nr[4] := nr[4] + 1;
                     end if;
 
                     // Move or remove MAT file
                     if keepResultFile then
-                      move(MATFileName,  fullPathName(modelDirectory + "/" + name + ".mat"));
+                      move(MATFileName, fullPathName(modelDirectory + "/" + name + ".mat"));
                     else
                       removeFile(MATFileName);
                     end if;
@@ -585,7 +564,7 @@ Generate HTML documentation from Modelica model or package in Dymola</p></html>"
       ModelManagement.Structure.AST.Classes.ClassAttributes attributes;
     algorithm
       isExample := false;
-      attributes :=ModelManagement.Structure.AST.Classes.GetClassAttributes(s);
+      attributes := ModelManagement.Structure.AST.Classes.GetClassAttributes(s);
       if attributes.restricted == "model" then
         for i in 1:size(extendsClasses, 1) loop
           if 0 < Modelica.Utilities.Strings.findLast(extendsClasses[i], "Example") then
@@ -596,6 +575,51 @@ Generate HTML documentation from Modelica model or package in Dymola</p></html>"
         end for;
       end if;
     end isExampleModel;
+
+    impure function writeResult "Write the result file"
+      extends Modelica.Icons.Function;
+
+      import Modelica.Utilities.Files.exist;
+      import Modelica.Utilities.Streams.{print, readFile};
+      import Modelica.Math.BooleanVectors.allTrue;
+
+      input String MATFileName;
+      input String CSVFileName;
+      input String signalFileName;
+      input String errorFileName;
+      output Boolean isOK;
+    protected
+      String varNames[:];
+      Integer n;
+      Real traj[:, :];
+      Real traj_transposed[:, :];
+    algorithm
+      varNames := fill("", 0);
+      traj := fill(0, 0, 0);
+      traj_transposed := fill(0, 0, 0);
+      isOK := false;
+      // Write result variables as CSV file
+      n := readTrajectorySize(MATFileName);
+      if exist(signalFileName) then
+        varNames := removeLineComments(readFile(signalFileName));
+        if varNames[1] == "time" then
+          varNames[1] := "Time";
+        end if;
+        if allTrue(existTrajectoryNames(MATFileName, varNames)) then
+          traj := readTrajectory(MATFileName, varNames, n);
+          traj_transposed := transpose(traj);
+          if varNames[1] == "Time" then
+            varNames[1] := "time";
+          end if;
+          DataFiles.writeCSVmatrix(CSVFileName, varNames, traj_transposed, separator=",", quoteAllHeaders=true);
+          isOK := true;
+        else
+          print("Invalid signal names in file comparisonSignals.txt\n", errorFileName);
+        end if;
+      else
+        print("File comparisonSignals.txt not found\n", errorFileName);
+      end if;
+    end writeResult;
   end Internal;
 
   model TestModel
