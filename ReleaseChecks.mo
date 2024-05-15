@@ -627,5 +627,5 @@ Generate HTML documentation from Modelica model or package in Dymola</p></html>"
   equation
     der(x) = -x;
   end TestModel;
-  annotation (uses(DataFiles(version="1.0.5"), ModelManagement(version="1.3"), Modelica(version="4.0.0")));
+  annotation (uses(DataFiles(version="1.1.0"), ModelManagement(version="1.3.1"), Modelica(version="4.0.0")));
 end ReleaseChecks;
