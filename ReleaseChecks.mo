@@ -339,9 +339,7 @@ Generate HTML documentation from Modelica model or package in Dymola</p></html>"
                   if OK then
                     move("dslog.txt", fullPathName(modelDirectory + "/simulate_passed.log"));
                     MATFileName := name + ".mat";
-                    if writeResult(MATFileName, fullPathName(modelDirectory + "/" + name + ".csv"), fullPathName(modelDirectory + "/comparisonSignals.txt"), fullPathName(modelDirectory + "/result_failed.log")) then
-                      print("OK", fullPathName(modelDirectory + "/result_passed.log"));
-                    else
+                    if not writeResult(MATFileName, fullPathName(modelDirectory + "/" + name + ".csv"), fullPathName(modelDirectory + "/comparisonSignals.txt"), fullPathName(modelDirectory + "/result_passed.log"), fullPathName(modelDirectory + "/result_failed.log")) then
                       nr[4] := nr[4] + 1;
                     end if;
 
@@ -580,21 +578,24 @@ Generate HTML documentation from Modelica model or package in Dymola</p></html>"
       extends Modelica.Icons.Function;
 
       import Modelica.Utilities.Files.exist;
-      import Modelica.Utilities.Streams.{print, readFile};
+      import Modelica.Utilities.Streams.{close, print, readFile};
       import Modelica.Math.BooleanVectors.allTrue;
 
       input String MATFileName;
       input String CSVFileName;
       input String signalFileName;
+      input String successFileName;
       input String errorFileName;
       output Boolean isOK;
     protected
       String varNames[:];
+      String varName;
       Integer n;
       Real traj[:, :];
       Real traj_transposed[:, :];
     algorithm
       varNames := fill("", 0);
+      varName := "";
       traj := fill(0, 0, 0);
       traj_transposed := fill(0, 0, 0);
       isOK := false;
@@ -613,11 +614,17 @@ Generate HTML documentation from Modelica model or package in Dymola</p></html>"
           end if;
           DataFiles.writeCSVmatrix(CSVFileName, varNames, traj_transposed, separator=",", quoteAllHeaders=true);
           isOK := true;
+          for varName in varNames loop
+            print(varName, successFileName);
+          end for;
+          close(successFileName);
         else
-          print("Invalid signal names in file comparisonSignals.txt\n", errorFileName);
+          print("Invalid signal names in file comparisonSignals.txt", errorFileName);
+          close(errorFileName);
         end if;
       else
-        print("File comparisonSignals.txt not found\n", errorFileName);
+        print("File comparisonSignals.txt not found", errorFileName);
+        close(errorFileName);
       end if;
     end writeResult;
   end Internal;
